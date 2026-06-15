@@ -1,0 +1,16 @@
+services:
+  # rabbitMQ Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: university-rabbitmq
+    ports:
+      - "5672:5672" # Cổng giao tiếp chính của các Microservices (AMQP)
+      - "15672:15672" # Cổng giao diện Web UI Quản lý (Giao diện RabbitMQ Management)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  rabbitmq_data:

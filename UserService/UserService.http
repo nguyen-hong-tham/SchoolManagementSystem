@@ -1,0 +1,151 @@
+@UserService_HostAddress = http://localhost:5156
+
+### 1. REGISTER STUDENT
+POST {{UserService_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Nguyen Van A",
+  "email": "student1@test.com",
+  "username": "student1",
+  "password": "Password123!",
+  "userCode": "SV10001",
+  "gender": 0,
+  "dateOfBirth": "2005-05-15T00:00:00Z",
+  "phoneNumber": "0987654321",
+  "classId": 12
+}
+
+### 2. LOGIN STUDENT
+# @name loginStudent
+POST {{UserService_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "student1@test.com",
+  "password": "Password123!"
+}
+
+### Save Student Token
+@studentToken = {{loginStudent.response.body.token}}
+
+### 3. REGISTER ADMIN
+POST {{UserService_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "System Admin",
+  "email": "admin@test.com",
+  "username": "admin",
+  "password": "AdminPassword123!",
+  "userCode": "AD001",
+  "gender": 0,
+  "dateOfBirth": "1990-01-01T00:00:00Z",
+  "phoneNumber": "0912345678"
+}
+
+### 4. LOGIN ADMIN
+# @name loginAdmin
+POST {{UserService_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "AdminPassword123!"
+}
+
+### Save Admin Token
+@adminToken = {{loginAdmin.response.body.token}}
+
+### 5. GET ME (PROFILE CHÍNH MÌNH)
+GET {{UserService_HostAddress}}/api/auth/me
+Authorization: Bearer {{studentToken}}
+
+### 6. GET ALL USERS (CẦN AUTH)
+GET {{UserService_HostAddress}}/api/users
+Authorization: Bearer {{studentToken}}
+
+### 7. GET USER BY ID (CẦN AUTH)
+GET {{UserService_HostAddress}}/api/users/1
+Authorization: Bearer {{studentToken}}
+
+### 8. UPDATE PROFILE (CHỈ CHỦ SỞ HỮU HOẶC ADMIN)
+PUT {{UserService_HostAddress}}/api/users/1
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Nguyen Van A Updated",
+  "email": "student1@test.com",
+  "userCode": "SV10001",
+  "gender": 0,
+  "dateOfBirth": "2005-05-15T00:00:00Z",
+  "phoneNumber": "0900000000",
+  "classId": 12
+}
+
+### 9. DELETE USER (CHỈ ADMIN)
+DELETE {{UserService_HostAddress}}/api/users/1
+Authorization: Bearer {{adminToken}}
+
+### ================= ADMIN OPERATIONS =================
+
+### 10. ADMIN GET ALL USERS
+GET {{UserService_HostAddress}}/api/admin/users
+Authorization: Bearer {{adminToken}}
+
+### 11. ADMIN GET USER BY ID
+GET {{UserService_HostAddress}}/api/admin/users/2
+Authorization: Bearer {{adminToken}}
+
+### 12. ADMIN DIRECTLY CREATE TEACHER
+POST {{UserService_HostAddress}}/api/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Giang Vien B",
+  "email": "teacher1@test.com",
+  "username": "teacher1",
+  "password": "Password123!",
+  "role": "Teacher",
+  "userCode": "GV20001",
+  "gender": 1,
+  "dateOfBirth": "1985-08-20T00:00:00Z",
+  "phoneNumber": "0988888888"
+}
+
+### 13. ADMIN UPDATE USER
+PUT {{UserService_HostAddress}}/api/admin/users/2
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Giang Vien B Updated",
+  "email": "teacher1_new@test.com",
+  "userCode": "GV20001",
+  "gender": 1,
+  "dateOfBirth": "1985-08-20T00:00:00Z",
+  "phoneNumber": "0999999999"
+}
+
+### 14. ADMIN UPDATE ROLE
+PUT {{UserService_HostAddress}}/api/admin/users/2/role
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "role": "Admin"
+}
+
+### 15. ADMIN GET ALL STUDENTS
+GET {{UserService_HostAddress}}/api/admin/students
+Authorization: Bearer {{adminToken}}
+
+### 16. ADMIN GET ALL TEACHERS
+GET {{UserService_HostAddress}}/api/admin/teachers
+Authorization: Bearer {{adminToken}}
+
+### 17. ADMIN DELETE USER
+DELETE {{UserService_HostAddress}}/api/admin/users/2
+Authorization: Bearer {{adminToken}}

@@ -1,0 +1,49 @@
+@{
+    ViewData["Title"] = "Trang Quản Trị Hệ Thống";
+    Layout = "_Layout";
+}
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-info">
+            <h3>Tổng số Lớp học</h3>
+            <p>@ViewBag.ClassCount</p>
+        </div>
+        <div class="stat-icon primary"></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info">
+            <h3>Tổng số Môn học</h3>
+            <p>@ViewBag.SubjectCount</p>
+        </div>
+        <div class="stat-icon secondary"></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info">
+            <h3>Tổng Giáo viên</h3>
+            <p>@ViewBag.TeacherCount</p>
+        </div>
+        <div class="stat-icon success"></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info">
+            <h3>Tổng Học sinh</h3>
+            <p>@ViewBag.StudentCount</p>
+        </div>
+        <div class="stat-icon warning"></div>
+    </div>
+</div>
+
+<div class="custom-card">
+    <div class="card-header-flex">
+        <h3>Hướng Dẫn Vận Hành</h3>
+    </div>
+    <div style="line-height: 1.8; color: #475569;">
+        <p>Chào mừng bạn quay trở lại với trang quản lý của Quản Trị Viên! Tại đây, bạn có quyền hạn cao nhất đối với toàn bộ hệ thống:</p>
+        <ul style="margin-left: 20px; margin-top: 10px;">
+            <li><strong>Quản lý lớp học:</strong> Click vào menu <strong>Quản lý lớp học</strong> bên thanh sidebar để xem danh sách các lớp hiện tại, tạo lớp học mới hoặc vào chi tiết từng lớp học.</li>
+            <li><strong>Gán giáo viên chủ nhiệm & Giáo viên bộ môn:</strong> Trong chi tiết lớp học, bạn có thể chỉ định giáo viên chủ nhiệm hoặc gán các giáo viên bộ môn dạy môn học cho lớp học đó.</li>
+            <li><strong>Thời khóa biểu & Xếp lớp:</strong> Bạn có thể dễ dàng thêm học sinh vào lớp học hoặc lên lịch thời khóa biểu (schedules) theo các tiết học của từng thứ trong tuần.</li>
+        </ul>
+    </div>
+</div>

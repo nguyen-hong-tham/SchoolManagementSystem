@@ -14,4 +14,8 @@ public class StudentClass
     public DateTime AssignedDate { get; set; } = DateTime.UtcNow;
 
     public bool IsCurrent { get; set; } = true;
+
+    public DateTime? LeftDate { get; set; }
+
+    public string? PromotionStatus { get; set; }
 }

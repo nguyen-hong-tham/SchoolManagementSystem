@@ -1,0 +1,168 @@
+@model AdminCreateUserRequest
+@{
+    ViewData["Title"] = "Thêm Người Dùng Mới";
+    Layout = "_Layout";
+    var classes = ViewBag.Classes as IEnumerable<ClassViewModel> ?? new List<ClassViewModel>();
+}
+
+<div class="mb-3">
+    <a asp-action="Users" class="btn btn-secondary" style="padding: 8px 16px; text-decoration: none;">← Quay lại danh sách người dùng</a>
+</div>
+
+<div class="custom-card" style="max-width: 700px; margin: 0 auto;">
+    <h3 style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">Thêm Người Dùng Mới</h3>
+
+    <form asp-action="CreateUser" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger" style="margin-bottom: 15px; font-size: 0.9rem;"></div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Mã số định danh -->
+            <div class="form-group">
+                <label asp-for="UserCode" class="form-label">Mã số (Học sinh/Giáo viên/Admin)</label>
+                <input asp-for="UserCode" class="form-control" placeholder="Ví dụ: STU016, TEA005, ADM002" required />
+                <span asp-validation-for="UserCode" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+
+            <!-- Tên đăng nhập -->
+            <div class="form-group">
+                <label asp-for="Username" class="form-label">Tên tài khoản đăng nhập</label>
+                <input asp-for="Username" class="form-control" placeholder="Ví dụ: student.lan, teacher.ha" required />
+                <span asp-validation-for="Username" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Họ và tên -->
+            <div class="form-group">
+                <label asp-for="FullName" class="form-label">Họ và Tên</label>
+                <input asp-for="FullName" class="form-control" placeholder="Nhập họ và tên đầy đủ" required />
+                <span asp-validation-for="FullName" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label asp-for="Email" class="form-label">Địa chỉ Email</label>
+                <input asp-for="Email" type="email" class="form-control" placeholder="name@school.edu.vn" required />
+                <span asp-validation-for="Email" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Mật khẩu -->
+            <div class="form-group">
+                <label asp-for="Password" class="form-label">Mật khẩu</label>
+                <input asp-for="Password" type="password" class="form-control" placeholder="Tối thiểu 6 ký tự" required />
+                <span asp-validation-for="Password" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+
+            <!-- Vai trò -->
+            <div class="form-group">
+                <label asp-for="Role" class="form-label">Vai trò</label>
+                <select asp-for="Role" id="roleSelect" class="form-control" required>
+                    <option value="Student">Học sinh (Student)</option>
+                    <option value="Teacher">Giáo viên (Teacher)</option>
+                    <option value="Admin">Quản trị viên (Admin)</option>
+                </select>
+                <span asp-validation-for="Role" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Giới tính -->
+            <div class="form-group">
+                <label asp-for="Gender" class="form-label">Giới tính</label>
+                <select asp-for="Gender" class="form-control" required>
+                    <option value="0">Nam</option>
+                    <option value="1">Nữ</option>
+                </select>
+                <span asp-validation-for="Gender" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+
+            <!-- Ngày sinh -->
+            <div class="form-group">
+                <label asp-for="DateOfBirth" class="form-label">Ngày sinh</label>
+                <input asp-for="DateOfBirth" class="form-control" type="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                <span asp-validation-for="DateOfBirth" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Số điện thoại -->
+            <div class="form-group">
+                <label asp-for="PhoneNumber" class="form-label">Số điện thoại</label>
+                <input asp-for="PhoneNumber" class="form-control" placeholder="Nhập số điện thoại" />
+                <span asp-validation-for="PhoneNumber" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+
+            <!-- Địa chỉ -->
+            <div class="form-group">
+                <label asp-for="Address" class="form-label">Địa chỉ</label>
+                <input asp-for="Address" class="form-control" placeholder="Địa chỉ hiện tại" />
+                <span asp-validation-for="Address" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+        </div>
+
+        <!-- ================= STUDENT FIELDS ================= -->
+        <div id="studentFields" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-top: 10px; margin-bottom: 20px;">
+            <h4 style="margin-top: 0; margin-bottom: 12px; color: #0f172a; font-size: 0.95rem;">Thông Tin Học Sinh</h4>
+            <div class="alert alert-info" style="margin-bottom: 0; font-size: 0.85rem; padding: 10px; border-radius: 6px; border-left: 4px solid #3b82f6; background-color: #eff6ff; color: #1e3a8a;">
+                <strong>Thông báo:</strong> Việc xếp lớp cho học sinh mới sẽ được thực hiện trực tiếp tại giao diện quản lý lớp học (Class Detail -> Assign Student).
+            </div>
+        </div>
+
+        <!-- ================= TEACHER FIELDS ================= -->
+        <div id="teacherFields" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-top: 10px; margin-bottom: 20px; display: none;">
+            <h4 style="margin-top: 0; margin-bottom: 12px; color: #0f172a; font-size: 0.95rem;">Thông Tin Giáo Viên</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label asp-for="AcademicDegree" class="form-label">Học vị / Học hàm</label>
+                    <input asp-for="AcademicDegree" class="form-control" placeholder="Ví dụ: Cử nhân, Thạc sĩ, Tiến sĩ" />
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label asp-for="Specialization" class="form-label">Chuyên môn giảng dạy</label>
+                    <input asp-for="Specialization" class="form-control" placeholder="Ví dụ: Toán học, Ngữ văn" />
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label asp-for="Department" class="form-label">Khoa / Tổ bộ môn</label>
+                    <input asp-for="Department" class="form-control" placeholder="Ví dụ: Khoa Tự nhiên, Ngoại ngữ" />
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label asp-for="HireDate" class="form-label">Ngày ký hợp đồng</label>
+                    <input asp-for="HireDate" class="form-control" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 25px;">
+            <button type="submit" class="btn btn-primary" style="flex: 1; padding: 12px;">Thêm mới người dùng</button>
+            <a asp-action="Users" class="btn btn-secondary" style="flex: 1; padding: 12px; text-align: center; text-decoration: none;">Hủy</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const roleSelect = document.getElementById("roleSelect");
+        const studentFields = document.getElementById("studentFields");
+        const teacherFields = document.getElementById("teacherFields");
+
+        function toggleFields() {
+            const role = roleSelect.value;
+            if (role === "Student") {
+                studentFields.style.display = "block";
+                teacherFields.style.display = "none";
+            } else if (role === "Teacher") {
+                studentFields.style.display = "none";
+                teacherFields.style.display = "block";
+            } else {
+                studentFields.style.display = "none";
+                teacherFields.style.display = "none";
+            }
+        }
+
+        roleSelect.addEventListener("change", toggleFields);
+        toggleFields(); // Run initially
+    });
+</script>

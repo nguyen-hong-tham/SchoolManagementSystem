@@ -143,3 +143,4 @@ D:\ASP.NET\UniversityManagement\UserService\bin\Debug\net9.0\MassTransit.dll
 D:\ASP.NET\UniversityManagement\UserService\bin\Debug\net9.0\MassTransit.Abstractions.dll
 D:\ASP.NET\UniversityManagement\UserService\bin\Debug\net9.0\MassTransit.RabbitMqTransport.dll
 D:\ASP.NET\UniversityManagement\UserService\bin\Debug\net9.0\RabbitMQ.Client.dll
+D:\ASP.NET\UniversityManagement\UserService\obj\Debug\net9.0\UserService.sourcelink.json

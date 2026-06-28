@@ -18,4 +18,8 @@ public interface IHomeroomAssignmentService
 
     // Lấy danh sách GVCN của 1 giáo viên
     Task<IEnumerable<HomeroomAssignmentResponseDto>> GetTeacherHomeroomHistoryAsync(Guid teacherId);
+
+    // Lấy tất cả phân công GVCN theo năm học
+    Task<IEnumerable<HomeroomAssignmentResponseDto>> GetAllHomeroomsAsync(string? schoolYear);
 }
+

@@ -1,0 +1,155 @@
+@model IEnumerable<StudentClassViewModel>
+@{
+    var classInfo = ViewBag.ClassInfo as ClassViewModel;
+    var subjectId = (Guid)ViewBag.SubjectId;
+    var subjectName = ViewBag.SubjectName as string;
+    var studentScores = ViewBag.StudentScores as Dictionary<Guid, List<ScoreResponseViewModel>>;
+
+    ViewData["Title"] = $"Bảng Điểm Lớp {classInfo?.Name}";
+    Layout = "_Layout";
+}
+
+<div class="mb-3">
+    <a asp-action="Dashboard" class="btn btn-secondary" style="padding: 8px 16px;">← Quay lại lớp học của tôi</a>
+</div>
+
+<div class="custom-card">
+    <div class="card-header-flex">
+        <div>
+            <h3>Bảng Điểm Học Sinh - Lớp @classInfo?.Name</h3>
+            <p class="text-muted" style="margin-top: 5px; font-size: 0.95rem;">Môn học: <strong>@subjectName</strong> | Học kỳ 1 | Năm học @classInfo?.SchoolYear</p>
+        </div>
+    </div>
+
+    <!-- Student List with Scores -->
+    <div class="table-responsive">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Mã Học Sinh</th>
+                    <th>Họ và Tên</th>
+                    <th>Điểm Đã Có</th>
+                    <th>Nhập Điểm Mới</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model == null || !Model.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="text-center text-muted" style="padding: 30px 0;">Không có học sinh trong lớp học này.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var student in Model)
+                    {
+                        var scores = studentScores != null && studentScores.ContainsKey(student.StudentId)
+                            ? studentScores[student.StudentId]
+                            : new List<ScoreResponseViewModel>();
+
+                        <tr>
+                            <td class="fw-bold">@student.StudentCode</td>
+                            <td>@student.StudentName</td>
+                            <td>
+                                @if (!scores.Any())
+                                {
+                                    <span class="text-muted" style="font-style: italic; font-size: 0.9rem;">Chưa có điểm số.</span>
+                                }
+                                else
+                                {
+                                    <div class="score-group-flex">
+                                        @foreach (var score in scores)
+                                        {
+                                            <span class="score-tag @score.Type">
+                                                <strong>@(score.Type == "Oral" ? "Miệng" : (score.Type == "FifteenMinutes" ? "15 phút" : (score.Type == "OnePeriod" ? "1 Tiết" : (score.Type == "MidTerm" ? "Giữa kỳ" : "Cuối kỳ"))))</strong>: @score.ScoreValue
+                                                
+                                                <!-- Edit Form Link/Trigger -->
+                                                <span style="margin-left: 5px; cursor: pointer; display: flex; gap: 4px;">
+                                                    <!-- Sửa nhanh -->
+                                                    <a href="javascript:void(0);" onclick="showEditForm('@score.Id', '@score.ScoreValue', '@student.StudentName', '@score.Type')" title="Sửa" style="text-decoration: none;"></a>
+                                                    
+                                                    <!-- Xoá -->
+                                                    <form asp-action="DeleteScore" method="post" style="display: inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa điểm số này?');">
+                                                        <input type="hidden" name="classId" value="@classInfo?.Id" />
+                                                        <input type="hidden" name="subjectId" value="@subjectId" />
+                                                        <input type="hidden" name="scoreId" value="@score.Id" />
+                                                        <button type="submit" style="background: none; border: none; padding: 0; cursor: pointer; font-size: 0.9rem;">Xóa</button>
+                                                    </form>
+                                                </span>
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                            </td>
+                            <td>
+                                <!-- Quick Add Form Inline -->
+                                <form asp-action="AddScore" method="post" style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="hidden" name="classId" value="@classInfo?.Id" />
+                                    <input type="hidden" name="subjectId" value="@subjectId" />
+                                    <input type="hidden" name="StudentId" value="@student.StudentId" />
+                                    <input type="hidden" name="Semester" value="1" />
+                                    <input type="hidden" name="SchoolYear" value="@classInfo?.SchoolYear" />
+
+                                    <select name="Type" class="form-control" style="padding: 6px 10px; font-size: 0.85rem; width: 110px;" required>
+                                        <option value="Oral">Miệng</option>
+                                        <option value="FifteenMinutes">15 phút</option>
+                                        <option value="OnePeriod">1 Tiết</option>
+                                        <option value="MidTerm">Giữa kỳ</option>
+                                        <option value="Final">Cuối kỳ</option>
+                                    </select>
+
+                                    <input type="number" step="0.1" min="0" max="10" name="ScoreValue" class="form-control" style="padding: 6px 10px; font-size: 0.85rem; width: 80px;" placeholder="Điểm" required />
+
+                                    <button type="submit" class="btn btn-success" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">Nhập</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Edit Score Overlay Dialog (Quick mockup using pure JS/CSS) -->
+<div id="editScoreModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="custom-card" style="width: 100%; max-width: 420px; background: white; border-radius: 12px; padding: 25px; box-shadow: var(--shadow-lg);">
+        <h3 style="margin-bottom: 15px;">Cập Nhật Điểm Số</h3>
+        <p style="font-size: 0.95rem; margin-bottom: 20px; color: var(--color-text-light);">
+            Học sinh: <strong id="editStudentName">N/A</strong><br/>
+            Loại điểm: <span id="editScoreType" class="badge badge-primary">N/A</span>
+        </p>
+
+        <form asp-action="EditScore" method="post">
+            <input type="hidden" name="classId" value="@classInfo?.Id" />
+            <input type="hidden" name="subjectId" value="@subjectId" />
+            <input type="hidden" name="scoreId" id="editScoreId" />
+
+            <div class="form-group">
+                <label class="form-label">Điểm số mới</label>
+                <input type="number" step="0.1" min="0" max="10" name="ScoreValue" id="editScoreValueInput" class="form-control" required />
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                <button type="button" class="btn btn-secondary" onclick="hideEditForm()">Hủy</button>
+                <button type="submit" class="btn btn-primary">Lưu Thay Đổi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function showEditForm(scoreId, scoreValue, studentName, scoreType) {
+            document.getElementById('editScoreId').value = scoreId;
+            document.getElementById('editScoreValueInput').value = scoreValue;
+            document.getElementById('editStudentName').innerText = studentName;
+            document.getElementById('editScoreType').innerText = scoreType == "Oral" ? "Miệng" : (scoreType == "FifteenMinutes" ? "15 phút" : (scoreType == "OnePeriod" ? "1 Tiết" : (scoreType == "MidTerm" ? "Giữa kỳ" : "Cuối kỳ")));
+            document.getElementById('editScoreModal').style.display = 'flex';
+        }
+
+        function hideEditForm() {
+            document.getElementById('editScoreModal').style.display = 'none';
+        }
+    </script>
+}

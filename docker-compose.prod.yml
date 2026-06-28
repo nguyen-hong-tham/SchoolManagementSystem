@@ -1,0 +1,150 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: university-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - university-network
+
+  # 2. RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: university-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672" # Web UI Management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - university-network
+
+  # 3. UserService
+  user-service:
+    build:
+      context: ./UserService
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "5156:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=user_db;Username=postgres;Password=password123
+      - MessageBroker__Host=rabbitmq
+      - MessageBroker__Username=guest
+      - MessageBroker__Password=guest
+      - Jwt__Key=SuperSecretKeyForJwtAuthenticationThatIsLongEnoughToAvoidErrors123456!
+      - Jwt__Issuer=UserService
+      - Jwt__Audience=UniversityManagement
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - university-network
+
+  # 4. ClassService
+  class-service:
+    build:
+      context: ./ClassService
+      dockerfile: Dockerfile
+    container_name: class-service
+    ports:
+      - "5124:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ClassDb;Username=postgres;Password=password123
+      - MessageBroker__Host=rabbitmq
+      - MessageBroker__Username=guest
+      - MessageBroker__Password=guest
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - university-network
+
+  # 5. SubjectService
+  subject-service:
+    build:
+      context: ./SubjectService
+      dockerfile: Dockerfile
+    container_name: subject-service
+    ports:
+      - "5187:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=SubjectDb;Username=postgres;Password=password123
+      - MessageBroker__Host=rabbitmq
+      - MessageBroker__Username=guest
+      - MessageBroker__Password=guest
+      - Jwt__Key=SuperSecretKeyForJwtAuthenticationThatIsLongEnoughToAvoidErrors123456!
+      - Jwt__Issuer=UserService
+      - Jwt__Audience=UniversityManagement
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - university-network
+
+  # 6. ScoreService
+  score-service:
+    build:
+      context: ./ScoreService
+      dockerfile: Dockerfile
+    container_name: score-service
+    ports:
+      - "5221:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ScoreDb;Username=postgres;Password=password123
+      - MessageBroker__Host=rabbitmq
+      - MessageBroker__Username=guest
+      - MessageBroker__Password=guest
+      - Jwt__Key=SuperSecretKeyForJwtAuthenticationThatIsLongEnoughToAvoidErrors123456!
+      - Jwt__Issuer=UserService
+      - Jwt__Audience=UniversityManagement
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - university-network
+
+  # 7. FrontendMVC
+  frontend-mvc:
+    build:
+      context: ./FrontendMVC
+      dockerfile: Dockerfile
+    container_name: frontend-mvc
+    ports:
+      - "5281:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Microservices__UserService=http://user-service:8080/api
+      - Microservices__ClassService=http://class-service:8080/api
+      - Microservices__SubjectService=http://subject-service:8080/api
+      - Microservices__ScoreService=http://score-service:8080/api
+    depends_on:
+      - user-service
+      - class-service
+      - subject-service
+      - score-service
+    networks:
+      - university-network
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+
+networks:
+  university-network:
+    driver: bridge

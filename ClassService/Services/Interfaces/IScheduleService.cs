@@ -8,6 +8,6 @@ namespace ClassService.Services.Interfaces;
 public interface IScheduleService
 {
     Task<ScheduleResponseDto> CreateScheduleAsync(CreateScheduleDto dto);
-    Task<IEnumerable<ScheduleResponseDto>> GetClassScheduleAsync(Guid classId, string schoolYear);
-    Task<IEnumerable<ScheduleResponseDto>> GetTeacherScheduleAsync(Guid teacherId, string schoolYear);
+    Task<IEnumerable<ScheduleResponseDto>> GetClassScheduleAsync(Guid classId, string? schoolYear);
+    Task<IEnumerable<ScheduleResponseDto>> GetTeacherScheduleAsync(Guid teacherId, string? schoolYear);
 }

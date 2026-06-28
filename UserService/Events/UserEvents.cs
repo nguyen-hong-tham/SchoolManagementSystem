@@ -9,6 +9,8 @@ namespace Shared.Events
         public string UserCode { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
+        public Guid? ClassId { get; set; }
+        public string? StudentStatus { get; set; }
     }
 
     // sự kiện cập nhật user
@@ -18,6 +20,8 @@ namespace Shared.Events
         public string UserCode { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
+        public Guid? ClassId { get; set; }
+        public string? StudentStatus { get; set; }
     }
 
     // sự kiện xóa user

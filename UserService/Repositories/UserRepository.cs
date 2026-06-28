@@ -19,6 +19,12 @@ public class UserRepository : IUserRepository
         return await _db.Users.Include(x => x.TeacherProfile).FirstOrDefaultAsync(x => x.Email == email);
     }
 
+    public async Task<User?> GetByUsernameOrEmailAsync(string usernameOrEmail)
+    {
+        return await _db.Users.Include(x => x.TeacherProfile)
+            .FirstOrDefaultAsync(x => x.Email == usernameOrEmail || x.Username == usernameOrEmail);
+    }
+
     public async Task<User> CreateAsync(User user)
     {
         _db.Users.Add(user);

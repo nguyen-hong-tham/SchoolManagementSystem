@@ -37,7 +37,7 @@ public class SchedulesController : ControllerBase
     }
 
     [HttpGet("classes/{classId:guid}/schedule")]
-    public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetClassSchedule(Guid classId, [FromQuery] string schoolYear)
+    public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetClassSchedule(Guid classId, [FromQuery] string? schoolYear)
     {
         try
         {
@@ -51,7 +51,7 @@ public class SchedulesController : ControllerBase
     }
 
     [HttpGet("teachers/{teacherId:guid}/schedule")]
-    public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetTeacherSchedule(Guid teacherId, [FromQuery] string schoolYear)
+    public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetTeacherSchedule(Guid teacherId, [FromQuery] string? schoolYear)
     {
         var result = await _scheduleService.GetTeacherScheduleAsync(teacherId, schoolYear);
         return Ok(result);

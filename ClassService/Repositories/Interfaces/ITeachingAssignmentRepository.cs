@@ -12,5 +12,6 @@ public interface ITeachingAssignmentRepository
     Task<TeachingAssignment?> GetAssignmentAsync(Guid classId, Guid subjectId, string schoolYear);
     Task AddAsync(TeachingAssignment entity);
     void Update(TeachingAssignment entity);
+    void Delete(TeachingAssignment entity);
     Task SaveChangesAsync();
 }

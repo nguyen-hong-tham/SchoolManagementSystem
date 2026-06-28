@@ -1,0 +1,53 @@
+@model UpdateSubjectRequest
+@{
+    ViewData["Title"] = "Chỉnh Sửa Môn Học";
+    Layout = "_Layout";
+    var subjectId = ViewBag.SubjectId as Guid?;
+    var code = ViewBag.Code as string;
+}
+
+<div class="mb-3">
+    <a asp-action="Subjects" class="btn btn-secondary" style="padding: 8px 16px; text-decoration: none;">← Quay lại danh sách môn học</a>
+</div>
+
+<div class="custom-card" style="max-width: 600px; margin: 0 auto;">
+    <h3 style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">Chỉnh Sửa Môn Học</h3>
+
+    <form asp-action="EditSubject" asp-route-id="@subjectId" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger" style="margin-bottom: 15px; font-size: 0.9rem;"></div>
+
+        <div class="form-group">
+            <label class="form-label">Mã môn học</label>
+            <!-- Mã môn học hiển thị nhưng không cho chỉnh sửa do thuộc về thiết kế cốt lõi API -->
+            <input class="form-control" value="@code" readonly style="background-color: #f1f5f9; color: #64748b; cursor: not-allowed;" />
+            <p class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">Lưu ý: Mã môn học là thông tin định danh hệ thống, không thể sửa đổi.</p>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="Name" class="form-label">Tên môn học</label>
+            <input asp-for="Name" class="form-control" placeholder="Ví dụ: Toán Học, Ngữ Văn" required />
+            <span asp-validation-for="Name" class="text-danger" style="font-size: 0.8rem;"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="Description" class="form-label">Mô tả môn học</label>
+            <textarea asp-for="Description" class="form-control" rows="3" placeholder="Nhập mô tả môn học..." style="resize: vertical;"></textarea>
+            <span asp-validation-for="Description" class="text-danger" style="font-size: 0.8rem;"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="GradeLevel" class="form-label">Khối lớp áp dụng</label>
+            <select asp-for="GradeLevel" class="form-control" required>
+                <option value="10">Khối 10</option>
+                <option value="11">Khối 11</option>
+                <option value="12">Khối 12</option>
+            </select>
+            <span asp-validation-for="GradeLevel" class="text-danger" style="font-size: 0.8rem;"></span>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 25px;">
+            <button type="submit" class="btn btn-primary" style="flex: 1; padding: 12px;">Cập nhật</button>
+            <a asp-action="Subjects" class="btn btn-secondary" style="flex: 1; padding: 12px; text-align: center; text-decoration: none;">Hủy</a>
+        </div>
+    </form>
+</div>

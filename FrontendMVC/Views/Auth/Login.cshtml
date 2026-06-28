@@ -1,0 +1,60 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Đăng Nhập";
+    Layout = "_Layout";
+}
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h1>CỔNG THÔNG TIN</h1>
+            <p>Hệ Thống Quản Lý Trường Học</p>
+        </div>
+
+        <form asp-controller="Auth" asp-action="Login" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" style="padding: 10px; font-size: 0.9rem;"></div>
+
+            <div class="form-group">
+                <label asp-for="UsernameOrEmail" class="form-label">Email hoặc Username</label>
+                <input asp-for="UsernameOrEmail" class="form-control" placeholder="Nhập tài khoản của bạn" required />
+                <span asp-validation-for="UsernameOrEmail" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Password" class="form-label">Mật khẩu</label>
+                <div class="password-input-container" style="position: relative;">
+                    <input asp-for="Password" type="password" class="form-control" placeholder="Nhập mật khẩu" required style="padding-right: 50px;" />
+                    <button type="button" id="togglePassword" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; font-size: 0.85rem; padding: 5px; user-select: none; font-weight: 500; transition: color 0.2s;">
+                        Xem
+                    </button>
+                </div>
+                <span asp-validation-for="Password" class="text-danger" style="font-size: 0.8rem;"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding: 14px;">Đăng Nhập</button>
+        </form>
+
+        <div style="margin-top: 25px; font-size: 0.85rem; color: #64748b; line-height: 1.5; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+            <p class="fw-bold" style="color: #475569; margin-bottom: 5px;">Tài khoản Test gợi ý:</p>
+            <p>• Admin: <strong>admin</strong> / <strong>Admin@@123</strong></p>
+            <p>• Giáo viên: <strong>teacher.an</strong> / <strong>Teacher@@123</strong></p>
+            <p>• Học sinh: <strong>student.cuong</strong> / <strong>Student@@123</strong></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const passwordInput = document.querySelector("input[name='Password']");
+        const toggleButton = document.getElementById("togglePassword");
+        
+        if (toggleButton && passwordInput) {
+            toggleButton.addEventListener("click", function () {
+                const isPassword = passwordInput.getAttribute("type") === "password";
+                passwordInput.setAttribute("type", isPassword ? "text" : "password");
+                toggleButton.textContent = isPassword ? "Ẩn" : "Xem";
+                toggleButton.style.color = isPassword ? "#4f46e5" : "#64748b"; // Highlight active show state
+            });
+        }
+    });
+</script>

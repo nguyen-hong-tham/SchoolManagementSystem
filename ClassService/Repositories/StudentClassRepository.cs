@@ -14,19 +14,25 @@ public class StudentClassRepository : IStudentClassRepository
         _context = context;
     }
 
-    public async Task<List<StudentClass>> GetStudentsByClassIdAsync(Guid classId)
+    public async Task<List<StudentClass>> GetStudentsByClassIdAsync(Guid classId, bool onlyCurrent = false)
     {
-        return await _context.StudentClasses
-            .Where(x => x.ClassId == classId && x.IsCurrent)
-            .ToListAsync();
+        var query = _context.StudentClasses.Where(x => x.ClassId == classId);
+        if (onlyCurrent)
+        {
+            query = query.Where(x => x.IsCurrent);
+        }
+        else
+        {
+            query = query.Where(x => x.PromotionStatus != "Transferred");
+        }
+        return await query.ToListAsync();
     }
 
     public async Task<StudentClass?> GetCurrentStudentClassAsync(Guid studentId)
     {
-        return await _context.StudentClasses
-            .FirstOrDefaultAsync(x =>
-                x.StudentId == studentId &&
-                x.IsCurrent);
+        return await _context.StudentClasses.FirstOrDefaultAsync(x =>
+            x.StudentId == studentId && x.IsCurrent
+        );
     }
 
     public async Task AddAsync(StudentClass studentClass)

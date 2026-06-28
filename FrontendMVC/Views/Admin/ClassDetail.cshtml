@@ -1,0 +1,1537 @@
+@{
+    var classInfo = ViewBag.ClassInfo as ClassViewModel;
+    var studentsInClass = ViewBag.StudentsInClass as IEnumerable<StudentClassViewModel>;
+    var homeroom = ViewBag.Homeroom as HomeroomAssignmentViewModel;
+    var teachingAssignments = ViewBag.TeachingAssignments as IEnumerable<TeachingAssignmentViewModel>;
+    var schedules = ViewBag.Schedules as IEnumerable<ScheduleViewModel>;
+
+    var allTeachers = ViewBag.AllTeachers as IEnumerable<UserViewModel> ?? new List<UserViewModel>();
+    var availableHomeroomTeachers = ViewBag.AvailableHomeroomTeachers as IEnumerable<UserViewModel> ?? new List<UserViewModel>();
+    var availableSubjects = ViewBag.AvailableSubjects as IEnumerable<SubjectViewModel> ?? new List<SubjectViewModel>();
+    var allStudents = ViewBag.AllStudents as IEnumerable<UserViewModel> ?? new List<UserViewModel>();
+    var allSubjects = ViewBag.AllSubjects as IEnumerable<SubjectViewModel> ?? new List<SubjectViewModel>();
+
+    ViewData["Title"] = $"Lớp {classInfo?.Name}";
+    Layout = "_Layout";
+}
+
+<div class="mb-3">
+    <a asp-action="Classes" class="btn btn-secondary" style="padding: 8px 16px; text-decoration: none;">← Quay lại danh sách lớp</a>
+</div>
+
+<!-- Combined Summary Header Card -->
+<div class="custom-card" style="margin-bottom: 25px; padding: 24px; border-radius: 16px;">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div style="background: rgba(79, 70, 229, 0.1); color: var(--color-primary); padding: 12px 20px; border-radius: 12px; font-weight: 800; font-size: 1.5rem; border: 1px solid rgba(79, 70, 229, 0.15);">
+                Lớp @classInfo?.Name
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                <span class="badge" style="background-color: #e0e7ff; color: #4f46e5; font-size: 0.9rem; padding: 8px 14px; font-weight: 600; border-radius: 8px;">
+                    Khối @classInfo?.GradeLevel
+                </span>
+                <span class="badge" style="background-color: #f1f5f9; color: #475569; font-size: 0.9rem; padding: 8px 14px; font-weight: 600; border-radius: 8px;">
+                     Năm học @classInfo?.SchoolYear
+                </span>
+                <span class="badge" style="background-color: #ecfdf5; color: #059669; font-size: 0.9rem; padding: 8px 14px; font-weight: 600; border-radius: 8px;" id="headerStudentCountBadge">
+                     Sĩ số: @(studentsInClass?.Count() ?? 0)/45 học sinh
+                </span>
+            </div>
+        </div>
+        
+        <!-- Homeroom Teacher Section -->
+        <div style="display: flex; align-items: center; gap: 15px; background: #f8fafc; padding: 10px 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <div id="homeroomTeacherContainer" style="display: flex; align-items: center; gap: 12px;">
+                @if (homeroom != null)
+                {
+                    <div class="avatar-placeholder" style="width: 42px; height: 42px; background-color: #d1fae5; color: var(--color-success); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem;">
+                        @(string.IsNullOrEmpty(homeroom.TeacherName) ? "?" : homeroom.TeacherName[0].ToString().ToUpper())
+                    </div>
+                    <div>
+                        <div class="text-muted" style="font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px;">GIÁO VIÊN CHỦ NHIỆM</div>
+                        <div class="fw-bold" style="color: #0f172a; font-size: 0.95rem;">@homeroom.TeacherName</div>
+                        <div class="text-muted" style="font-size: 0.8rem;">Mã GV: @homeroom.TeacherCode</div>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <div class="text-muted" style="font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px;">GIÁO VIÊN CHỦ NHIỆM</div>
+                        <div class="text-muted" style="font-size: 0.9rem; font-style: italic;">Chưa phân công</div>
+                    </div>
+                }
+            </div>
+
+            <form id="assignHomeroomForm" asp-action="AssignHomeroom" method="post" style="display: flex; gap: 8px; margin: 0; align-items: center;">
+                <input type="hidden" name="classId" value="@classInfo?.Id" />
+                <input type="hidden" name="SchoolYear" value="@classInfo?.SchoolYear" />
+                <select id="homeroomTeacherSelect" name="TeacherId" class="form-control" style="padding: 6px 10px; font-size: 0.85rem; width: 170px; border-radius: 8px;" required>
+                    <option value="">-- Chọn GVCN --</option>
+                    @foreach (var t in availableHomeroomTeachers)
+                    {
+                        <option value="@t.Id" selected="@(homeroom?.TeacherId == t.Id)">@t.FullName (@t.UserCode)</option>
+                    }
+                </select>
+                <button type="submit" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 8px; white-space: nowrap;">Phân công</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs Navigation -->
+<div class="custom-card" style="padding: 6px 16px; margin-bottom: 25px; border-radius: 12px;">
+    <div style="display: flex; gap: 5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 0;">
+        <button class="tab-button active" onclick="switchTab(event, 'tab-students')">
+             Học sinh
+        </button>
+        <button class="tab-button" onclick="switchTab(event, 'tab-teaching')">
+             Phân công giảng dạy
+        </button>
+        <button class="tab-button" onclick="switchTab(event, 'tab-schedule')">
+             Thời khóa biểu
+        </button>
+    </div>
+</div>
+
+<!-- TAB PANELS -->
+
+<!-- 1. Students Tab Panel -->
+<div id="tab-students" class="tab-content" style="display: block;">
+    <div style="display: grid; grid-template-columns: 2.1fr 0.9fr; gap: 30px; align-items: start;">
+        <!-- Student List Table (Left 70%) -->
+        <div class="custom-card" style="margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0; font-size: 1.15rem;" id="studentsListHeader">Danh Sách Học Sinh Trong Lớp (@(studentsInClass?.Count() ?? 0) học sinh)</h3>
+                <!-- Search Box -->
+                <div style="position: relative; width: 260px;">
+                    <input type="text" id="studentSearchInput" placeholder="Tìm kiếm học sinh..." oninput="onStudentSearch()" style="width: 100%; padding: 8px 12px; font-size: 0.85rem; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;" />
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">STT</th>
+                            <th>Mã Học Sinh</th>
+                            <th>Họ và Tên</th>
+                            <th>Ngày Nhập Lớp</th>
+                            <th style="text-align: right; width: 200px;">Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <!-- Loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Row -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #f1f5f9;">
+                <div class="text-muted" style="font-size: 0.85rem;" id="studentPaginationInfo">
+                    Hiển thị 0 - 0 trong số 0 học sinh
+                </div>
+                <div style="display: flex; gap: 5px;" id="studentPaginationButtons">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Student Form (Right 30% - Sticky) -->
+        <div class="custom-card sticky-sidebar-panel" style="margin-bottom: 0;">
+            <h3>Xếp Học Sinh Vào Lớp</h3>
+            <p class="text-muted" style="font-size: 0.85rem; margin-top: 5px; margin-bottom: 20px;">
+                Lưu ý: Chỉ những học sinh chưa được phân lớp mới hiển thị trong danh sách hoặc được chấp nhận.
+            </p>
+
+            <form id="assignStudentForm" asp-action="AssignStudent" method="post">
+                <input type="hidden" name="classId" value="@classInfo?.Id" />
+
+                <div class="form-group">
+                    <label class="form-label">Chọn học sinh</label>
+                    <select id="studentSelect" name="StudentId" class="form-control" required>
+                        <option value="">-- Chọn học sinh --</option>
+                        @foreach (var s in allStudents)
+                        {
+                            <option value="@s.Id">@s.FullName (@s.UserCode)</option>
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 10px; font-weight: 600;">Thêm Vào Lớp</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Teaching Assignments Tab Panel -->
+<div id="tab-teaching" class="tab-content" style="display: none;">
+    <div style="display: grid; grid-template-columns: 2.1fr 0.9fr; gap: 30px; align-items: start;">
+        <!-- Teaching Table (Left 70%) -->
+        <div class="custom-card" style="margin-bottom: 0;">
+            <div class="card-header-flex" style="margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 1.15rem;">Phân Công Giảng Dạy (Giáo Viên Bộ Môn)</h3>
+            </div>
+
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">STT</th>
+                            <th>Môn Học</th>
+                            <th>Giáo Viên Phụ Trách</th>
+                            <th>Mã Giáo Viên</th>
+                            <th>Ngày Phân Công</th>
+                            <th style="text-align: right; width: 200px;">Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teachingAssignmentsTableBody">
+                        <!-- Loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Assign Teacher Form (Right 30% - Sticky) -->
+        <div class="custom-card sticky-sidebar-panel" style="margin-bottom: 0;">
+            <h3>Phân Công Giảng Dạy</h3>
+            <p class="text-muted" style="font-size: 0.85rem; margin-top: 5px; margin-bottom: 20px;">
+                Lưu ý: Nếu môn học đã được phân công, thao tác này sẽ cập nhật giáo viên mới.
+            </p>
+
+            <form id="assignTeachingForm" asp-action="AssignTeaching" method="post">
+                <input type="hidden" name="classId" value="@classInfo?.Id" />
+                <input type="hidden" name="SchoolYear" value="@classInfo?.SchoolYear" />
+
+                <div class="form-group">
+                    <label class="form-label">Chọn Môn học</label>
+                    <select id="assignSubjectSelect" name="SubjectId" class="form-control" required>
+                        <option value="">-- Chọn môn --</option>
+                        @foreach (var sub in allSubjects.Where(s => s.GradeLevel == classInfo.GradeLevel))
+                        {
+                            var isAssigned = teachingAssignments?.Any(ta => ta.SubjectId == sub.Id) ?? false;
+                            <option value="@sub.Id">@sub.Name (@sub.Code) @(isAssigned ? "- [Đã phân công]" : "")</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Chọn Giáo viên</label>
+                    <select id="assignTeacherSelect" name="TeacherId" class="form-control" required>
+                        <option value="">-- Chọn giáo viên --</option>
+                        @foreach (var t in allTeachers)
+                        {
+                            <option value="@t.Id">@t.FullName (@t.UserCode)</option>
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 10px; font-weight: 600;">Phân Công</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Schedule Tab Panel -->
+<div id="tab-schedule" class="tab-content" style="display: none;">
+    <div style="display: grid; grid-template-columns: 2.1fr 0.9fr; gap: 30px; align-items: start;">
+        <!-- Timetable Grid (Left 70%) -->
+        <div class="custom-card" style="margin-bottom: 0;">
+            <div class="card-header-flex" style="margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 1.15rem;">Thời Khóa Biểu Tuần</h3>
+            </div>
+
+            <div class="schedule-grid" style="display: grid; grid-template-columns: 80px repeat(5, 1fr); gap: 1px; background-color: var(--border-color); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+                <!-- Header columns -->
+                <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Tiết</div>
+                <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Thứ Hai</div>
+                <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Thứ Ba</div>
+                <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Thứ Tư</div>
+                <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Thứ Năm</div>
+                <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Thứ Sáu</div>
+
+                <!-- 10 Periods Grid Rows -->
+                @for (int period = 1; period <= 10; period++)
+                {
+                    <!-- Period Number Cell -->
+                    <div class="schedule-cell period-header" style="background-color: #f8fafc; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; color: #64748b; border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); height: 75px;">
+                        Tiết @period
+                    </div>
+                    
+                    @for (int day = 2; day <= 6; day++)
+                    {
+                        var item = schedules?.FirstOrDefault(s => s.DayOfWeek == day && s.Period == period);
+                        <div class="schedule-cell" data-day="@day" data-period="@period" style="background-color: #ffffff; border-bottom: 1px solid var(--border-color); padding: 6px; height: 75px; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                            @if (item != null)
+                            {
+                                <div class="schedule-item" style="background-color: #e0e7ff; border-left: 4px solid var(--color-primary); padding: 4px 8px; border-radius: 4px; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                                    <div class="sub" style="font-weight: 700; color: #312e81; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@item.SubjectName</div>
+                                    <div class="teacher" style="color: #4338ca; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">GV: @item.TeacherName</div>
+                                    <div class="room" style="color: #6366f1; font-size: 0.7rem; font-weight: 500; text-align: right;"> @item.Room</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- Add Schedule Form (Right 30% - Sticky) -->
+        <div class="custom-card sticky-sidebar-panel" style="margin-bottom: 0;">
+            <h3>Thêm Tiết Học</h3>
+            <form id="createScheduleForm" asp-action="CreateSchedule" method="post" style="margin-top: 20px;">
+                <input type="hidden" name="classId" value="@classInfo?.Id" />
+
+                <div class="form-group">
+                    <label class="form-label">Chọn Môn học</label>
+                    <select id="scheduleSubjectSelect" name="SubjectId" class="form-control" required>
+                        <option value="">-- Chọn môn --</option>
+                        @foreach (var sub in allSubjects.Where(s => s.GradeLevel == classInfo.GradeLevel))
+                        {
+                            <option value="@sub.Id">@sub.Name (@sub.Code)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Giáo viên phụ trách</label>
+                    <select id="scheduleTeacherSelect" name="TeacherId" class="form-control" required>
+                        <option value="">-- Chọn giáo viên --</option>
+                        @foreach (var t in allTeachers)
+                        {
+                            <option value="@t.Id">@t.FullName (@t.UserCode)</option>
+                        }
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label class="form-label">Thứ</label>
+                        <select id="scheduleDay" name="DayOfWeek" class="form-control" required>
+                            <option value="2">Thứ Hai</option>
+                            <option value="3">Thứ Ba</option>
+                            <option value="4">Thứ Tư</option>
+                            <option value="5">Thứ Năm</option>
+                            <option value="6">Thứ Sáu</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tiết học</label>
+                        <select id="schedulePeriod" name="Period" class="form-control" required>
+                            @for (int p = 1; p <= 10; p++)
+                            {
+                                <option value="@p">Tiết @p</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Phòng học</label>
+                    <input name="Room" class="form-control" placeholder="Ví dụ: Phòng 204" required />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Năm học</label>
+                    <input name="SchoolYear" class="form-control" value="@classInfo?.SchoolYear" required readonly />
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 10px; font-weight: 600;">Thêm Vào TKB</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal Styling & Markup -->
+<style>
+    /* Tab Styling */
+    .tab-button {
+        background: none;
+        border: none;
+        padding: 12px 24px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #64748b;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: all 0.15s ease-in-out;
+        outline: none;
+        margin-bottom: -1px;
+    }
+    .tab-button:hover {
+        color: var(--color-primary);
+    }
+    .tab-button.active {
+        color: var(--color-primary) !important;
+        border-bottom: 3px solid var(--color-primary) !important;
+    }
+    
+    /* Sticky sidebar panel */
+    .sticky-sidebar-panel {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 24px;
+        align-self: flex-start;
+        z-index: 10;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+        border: 1px solid #e2e8f0;
+    }
+
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(8px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.25s ease-in-out;
+    }
+    .modal-backdrop.show {
+        opacity: 1;
+    }
+    .modal-content {
+        background-color: #ffffff;
+        border-radius: 16px;
+        box-shadow: var(--shadow-lg);
+        width: 90%;
+        max-width: 680px;
+        max-height: 85vh;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+        transform: scale(0.95);
+        transition: transform 0.25s ease-in-out;
+    }
+    .modal-backdrop.show .modal-content {
+        transform: scale(1);
+    }
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #f8fafc;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+    }
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--color-text-dark);
+    }
+    .modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.75rem;
+        font-weight: 500;
+        color: var(--color-text-light);
+        cursor: pointer;
+        transition: color 0.15s ease;
+        line-height: 1;
+    }
+    .modal-close-btn:hover {
+        color: var(--color-danger);
+    }
+    .modal-body {
+        padding: 24px;
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .info-label {
+        font-size: 0.85rem;
+        color: var(--color-text-light);
+        margin-bottom: 4px;
+        font-weight: 500;
+    }
+    .info-value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--color-text-dark);
+    }
+    .modal-section-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        border-bottom: 2px solid var(--color-primary);
+        padding-bottom: 6px;
+        margin-bottom: 16px;
+        margin-top: 24px;
+    }
+    .spinner-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 0;
+        color: var(--color-text-light);
+        gap: 12px;
+    }
+    .spinner {
+        border: 4px solid rgba(79, 70, 229, 0.1);
+        border-top: 4px solid var(--color-primary);
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        animation: spin 1s linear infinite;
+    }
+    @@keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .gpa-badge {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 1.15rem;
+        margin-bottom: 15px;
+        border: 1px solid transparent;
+    }
+    .gpa-badge.success {
+        background-color: #ecfdf5;
+        color: var(--color-success);
+        border-color: #a7f3d0;
+    }
+    .gpa-badge.warning {
+        background-color: #fffbeb;
+        color: var(--color-warning);
+        border-color: #fde68a;
+    }
+    .gpa-badge.danger {
+        background-color: #fef2f2;
+        color: var(--color-danger);
+        border-color: #fca5a5;
+    }
+    .modal-tab-btn.active {
+        color: var(--color-primary) !important;
+        border-bottom-color: var(--color-primary) !important;
+    }
+    .modal-tab-btn:hover {
+        color: var(--color-primary) !important;
+    }
+</style>
+
+<!-- Details Modal Backdrop & Container -->
+<div id="detailModal" class="modal-backdrop">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Chi tiết thông tin</h3>
+            <button class="modal-close-btn" onclick="closeDetailModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Dynamically populated -->
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Raw Data from Backend
+    const allTeachers = @Html.Raw(Json.Serialize(allTeachers)) || [];
+    const allSubjects = @Html.Raw(Json.Serialize(allSubjects)) || [];
+    const classId = "@classInfo?.Id";
+
+    let occupiedSlots = [
+        @if (schedules != null)
+        {
+            foreach (var s in schedules)
+            {
+                @:{ day: @s.DayOfWeek, period: @s.Period },
+            }
+        }
+    ];
+
+    // Student Pagination & Search State
+    let allStudentsInClass = @Html.Raw(Json.Serialize(studentsInClass)) || [];
+    let studentSearchQuery = '';
+    let studentCurrentPage = 1;
+    const studentPageSize = 10;
+
+    // Tab switcher
+    window.switchTab = function(event, tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => {
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        const activeTabPanel = document.getElementById(tabId);
+        if (activeTabPanel) {
+            activeTabPanel.style.display = 'block';
+        }
+        if (event) {
+            event.currentTarget.classList.add('active');
+        }
+    };
+
+    window.switchModalTab = function(event, tabId) {
+        document.querySelectorAll('.modal-tab-content').forEach(el => {
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('.modal-tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        const activeTabPanel = document.getElementById(tabId);
+        if (activeTabPanel) {
+            activeTabPanel.style.display = 'block';
+        }
+        if (event) {
+            event.currentTarget.classList.add('active');
+        }
+    };
+
+    // Client-side Student Search & Pagination
+    window.onStudentSearch = function() {
+        const input = document.getElementById('studentSearchInput');
+        studentSearchQuery = input ? input.value.trim().toLowerCase() : '';
+        studentCurrentPage = 1;
+        updateStudentsView();
+    };
+
+    function updateStudentsView() {
+        const filtered = allStudentsInClass.filter(s => {
+            const code = s.studentCode ? s.studentCode.toLowerCase() : '';
+            const name = s.studentName ? s.studentName.toLowerCase() : '';
+            return code.includes(studentSearchQuery) || name.includes(studentSearchQuery);
+        });
+
+        const total = filtered.length;
+        const totalPages = Math.ceil(total / studentPageSize) || 1;
+        
+        if (studentCurrentPage > totalPages) {
+            studentCurrentPage = totalPages;
+        }
+
+        const startIdx = (studentCurrentPage - 1) * studentPageSize;
+        const pageItems = filtered.slice(startIdx, startIdx + studentPageSize);
+
+        const tbody = document.getElementById('studentTableBody');
+        if (!tbody) return;
+
+        if (pageItems.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-muted" style="padding: 30px 0;">Không tìm thấy học sinh nào.</td>
+                </tr>
+            `;
+            document.getElementById('studentPaginationInfo').innerText = `Hiển thị 0 - 0 trong số 0 học sinh`;
+            document.getElementById('studentPaginationButtons').innerHTML = '';
+            return;
+        }
+
+        let html = '';
+        pageItems.forEach((student, index) => {
+            const date = new Date(student.assignedDate);
+            const formattedDate = isNaN(date.getTime()) 
+                ? '—' 
+                : date.toLocaleDateString('vi-VN') + ' ' + String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+            const globalIndex = startIdx + index + 1;
+
+            html += `
+                <tr>
+                    <td>${globalIndex}</td>
+                    <td class="fw-bold">${student.studentCode}</td>
+                    <td>${student.studentName}</td>
+                    <td>${formattedDate}</td>
+                    <td>
+                        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="showDetail('${student.studentId}')" style="padding: 5px 10px; font-size: 0.8rem; border-color: #cbd5e1; background: #ffffff; color: #475569;">👁 Chi tiết</button>
+                            <form action="/Admin/RemoveStudent" method="post" class="remove-student-form" data-student-id="${student.studentId}" style="margin: 0;">
+                                <input type="hidden" name="classId" value="${classId}" />
+                                <input type="hidden" name="studentId" value="${student.studentId}" />
+                                <button type="submit" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 0.8rem;">🗑 Xóa khỏi lớp</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+
+        // Update counts
+        const header = document.getElementById('studentsListHeader');
+        if (header) {
+            header.innerText = `Danh Sách Học Sinh Trong Lớp (${allStudentsInClass.length} học sinh)`;
+        }
+
+        // Update student count in header card
+        const countBadge = document.getElementById('headerStudentCountBadge');
+        if (countBadge) {
+            countBadge.innerText = ` Sĩ số: ${allStudentsInClass.length}/45 học sinh`;
+        }
+
+        // Update pagination info
+        const showStart = startIdx + 1;
+        const showEnd = Math.min(startIdx + studentPageSize, total);
+        document.getElementById('studentPaginationInfo').innerText = `Hiển thị ${showStart} - ${showEnd} trong số ${total} học sinh`;
+
+        // Render buttons
+        let btnHtml = '';
+        btnHtml += `<button onclick="goToStudentPage(${studentCurrentPage - 1})" class="btn btn-secondary btn-sm" ${studentCurrentPage === 1 ? 'disabled' : ''} style="padding: 4px 10px;">&lt;</button>`;
+        for (let i = 1; i <= totalPages; i++) {
+            const activeStyle = i === studentCurrentPage ? 'background-color: var(--color-primary); color: #fff; border-color: var(--color-primary);' : '';
+            btnHtml += `<button onclick="goToStudentPage(${i})" class="btn btn-secondary btn-sm" style="padding: 4px 10px; ${activeStyle}">${i}</button>`;
+        }
+        btnHtml += `<button onclick="goToStudentPage(${studentCurrentPage + 1})" class="btn btn-secondary btn-sm" ${studentCurrentPage === totalPages ? 'disabled' : ''} style="padding: 4px 10px;">&gt;</button>`;
+        
+        document.getElementById('studentPaginationButtons').innerHTML = btnHtml;
+
+        wireRemoveStudentForms();
+    }
+
+    window.goToStudentPage = function(page) {
+        studentCurrentPage = page;
+        updateStudentsView();
+    };
+
+    // Helper functions in Global Scope so that inline onclick handlers can call them
+    function groupStudentScores(scores) {
+        const grouped = {};
+        scores.forEach(s => {
+            const subCode = s.subjectCode;
+            if (!grouped[subCode]) {
+                grouped[subCode] = {
+                    subjectName: s.subjectName,
+                    subjectCode: s.subjectCode,
+                    oral: '—',
+                    midterm: '—',
+                    final: '—'
+                };
+            }
+            
+            const type = s.type.toLowerCase();
+            if (type === 'oral') grouped[subCode].oral = s.scoreValue;
+            else if (type === 'midterm') grouped[subCode].midterm = s.scoreValue;
+            else if (type === 'final') grouped[subCode].final = s.scoreValue;
+        });
+        return Object.values(grouped);
+    }
+
+    function showDetail(userId) {
+        const modal = document.getElementById('detailModal');
+        const modalBody = document.getElementById('modalBody');
+        const modalTitle = document.getElementById('modalTitle');
+        
+        if (!modal || !modalBody) return;
+        
+        modal.style.display = 'flex';
+        modal.offsetHeight;
+        modal.classList.add('show');
+        
+        modalBody.innerHTML = `
+            <div class="spinner-container">
+                <div class="spinner"></div>
+                <div style="font-weight: 500;">Đang tải thông tin...</div>
+            </div>
+        `;
+        
+        fetch(`/Admin/GetUserJson/${userId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    modalBody.innerHTML = `<div class="alert alert-danger" style="margin: 0;">${data.message || 'Có lỗi xảy ra.'}</div>`;
+                    return;
+                }
+                
+                const u = data.user;
+                const dob = u.dateOfBirth ? new Date(u.dateOfBirth).toLocaleDateString('vi-VN') : '—';
+                const genderStr = u.gender === 1 ? 'Nam' : 'Nữ';
+                
+                if (u.role === 1) {
+                    modalTitle.innerText = `Chi tiết Học sinh: ${u.fullName}`;
+                    
+                    let historyTabsHtml = '';
+                    let historyContentsHtml = '';
+                    
+                    if (!data.history || data.history.length === 0) {
+                        historyContentsHtml = '<p class="text-center text-muted">Học sinh chưa được phân vào lớp học nào.</p>';
+                    } else {
+                        // Generate Tabs
+                        historyTabsHtml = `
+                            <div class="tabs-container-modal" style="margin-top: 15px; border-bottom: 2px solid var(--border-color); display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px;">
+                                ${data.history.map((h, index) => `
+                                    <button type="button" class="modal-tab-btn ${h.isCurrent ? 'active' : ''}" 
+                                            onclick="switchModalTab(event, 'modal-tab-${index}')"
+                                            style="padding: 8px 16px; font-family: var(--font-primary); font-size: 0.9rem; font-weight: 600; border: none; background: none; border-bottom: 3px solid transparent; color: var(--color-text-light); cursor: pointer; transition: all 0.2s;">
+                                        Lớp ${h.className} (${h.schoolYear})
+                                        ${h.isCurrent ? '<span class="badge badge-success" style="font-size: 0.65rem; padding: 2px 4px; margin-left: 4px;">Hiện tại</span>' : ''}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        `;
+
+                        // Generate Content for each Tab
+                        historyContentsHtml = data.history.map((h, index) => {
+                            let gpaClass = 'warning';
+                            let gpaText = 'Chưa có điểm trung bình';
+                            if (h.gpa !== null && h.gpa !== undefined) {
+                                gpaText = `Điểm trung bình (GPA): ${h.gpa}`;
+                                if (h.gpa >= 8.0) gpaClass = 'success';
+                                else if (h.gpa >= 5.0) gpaClass = 'warning';
+                                else gpaClass = 'danger';
+                            }
+
+                            let scoresTableHtml = '';
+                            if (!h.scores || h.scores.length === 0) {
+                                scoresTableHtml = '<p class="text-center text-muted" style="padding: 15px 0;">Không có điểm số trong năm học này.</p>';
+                            } else {
+                                scoresTableHtml = `
+                                    <div class="table-responsive" style="margin-top: 10px;">
+                                        <table class="custom-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                                            <thead>
+                                                <tr>
+                                                    <th>Môn học</th>
+                                                    <th>Miệng</th>
+                                                    <th>15 Phút</th>
+                                                    <th>1 Tiết</th>
+                                                    <th>Giữa kỳ</th>
+                                                    <th>Cuối kỳ</th>
+                                                    <th>TBM</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${h.scores.map(gs => `
+                                                    <tr>
+                                                        <td class="fw-bold">${gs.subjectName}</td>
+                                                        <td>${gs.oral}</td>
+                                                        <td>${gs.fifteen}</td>
+                                                        <td>${gs.period}</td>
+                                                        <td>${gs.midterm}</td>
+                                                        <td>${gs.final}</td>
+                                                        <td class="fw-bold">${gs.tbm}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                `;
+                            }
+
+                            return `
+                                <div id="modal-tab-${index}" class="modal-tab-content" style="display: ${h.isCurrent ? 'block' : 'none'}; margin-top: 15px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <span style="font-weight: 600; color: var(--color-primary);">Lớp: ${h.className} (${h.schoolYear})</span>
+                                        <span class="gpa-badge ${gpaClass}" style="margin: 0; padding: 6px 12px; font-size: 0.85rem; border-radius: 6px;">${gpaText}</span>
+                                    </div>
+                                    ${scoresTableHtml}
+                                </div>
+                            `;
+                        }).join('');
+                    }
+
+                    modalBody.innerHTML = `
+                        <div class="modal-section-title" style="margin-top: 0;">Thông Tin Cá Nhân</div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Mã học sinh</span>
+                                <span class="info-value">${u.userCode}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Họ và tên</span>
+                                <span class="info-value">${u.fullName}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Giới tính</span>
+                                <span class="info-value">${genderStr}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Ngày sinh</span>
+                                <span class="info-value">${dob}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Email</span>
+                                <span class="info-value">${u.email || '—'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Số điện thoại</span>
+                                <span class="info-value">${u.phoneNumber || '—'}</span>
+                            </div>
+                            <div class="info-item" style="grid-column: span 2;">
+                                <span class="info-label">Địa chỉ</span>
+                                <span class="info-value">${u.address || '—'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Lớp hiện tại</span>
+                                <span class="info-value">${data.className || 'Chưa xếp lớp'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-section-title" style="margin-top: 20px;">Lịch Sử Học Tập & Điểm Số</div>
+                        ${historyTabsHtml}
+                        ${historyContentsHtml}
+                    `;
+                } else if (u.role === 2) {
+                    modalTitle.innerText = `Chi tiết Giáo viên: ${u.fullName}`;
+                    
+                    const profile = u.teacherProfile || {};
+                    const degree = profile.academicDegree || '—';
+                    const spec = profile.specialization || '—';
+                    const dept = profile.department || '—';
+                    const hireDate = profile.hireDate ? new Date(profile.hireDate).toLocaleDateString('vi-VN') : '—';
+                    
+                    let classesHtml = '';
+                    if (!data.teachingClasses || data.teachingClasses.length === 0) {
+                        classesHtml = '<span class="info-value">—</span>';
+                    } else {
+                        classesHtml = `
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+                                ${data.teachingClasses.map(c => `
+                                    <span class="badge bg-light text-dark border" style="padding: 5px 10px; font-size: 0.9rem;">Lớp ${c}</span>
+                                `).join('')}
+                            </div>
+                        `;
+                    }
+                    
+                    let subjectsHtml = '';
+                    if (!data.teachingSubjects || data.teachingSubjects.length === 0) {
+                        subjectsHtml = '<span class="info-value">—</span>';
+                    } else {
+                        subjectsHtml = `
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+                                ${data.teachingSubjects.map(s => `
+                                    <span class="badge bg-light text-dark border" style="padding: 5px 10px; font-size: 0.9rem;">${s}</span>
+                                `).join('')}
+                            </div>
+                        `;
+                    }
+                    
+                    modalBody.innerHTML = `
+                        <div class="modal-section-title" style="margin-top: 0;">Thông Tin Cá Nhân</div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Mã giáo viên</span>
+                                <span class="info-value">${u.userCode}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Họ và tên</span>
+                                <span class="info-value">${u.fullName}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Giới tính</span>
+                                <span class="info-value">${genderStr}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Ngày sinh</span>
+                                <span class="info-value">${dob}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Email</span>
+                                <span class="info-value">${u.email || '—'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Số điện thoại</span>
+                                <span class="info-value">${u.phoneNumber || '—'}</span>
+                            </div>
+                            <div class="info-item" style="grid-column: span 2;">
+                                <span class="info-label">Địa chỉ</span>
+                                <span class="info-value">${u.address || '—'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-section-title">Thông Tin Chuyên Môn</div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Học vị</span>
+                                <span class="info-value">${degree}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Chuyên môn</span>
+                                <span class="info-value">${spec}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Tổ bộ môn / Khoa</span>
+                                <span class="info-value">${dept}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Ngày nhận công tác</span>
+                                <span class="info-value">${hireDate}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="modal-section-title">Phân Công Giảng Dạy</div>
+                        <div class="info-grid">
+                            <div class="info-item" style="grid-column: span 2;">
+                                <span class="info-label">Lớp đang phụ trách</span>
+                                ${classesHtml}
+                            </div>
+                            <div class="info-item" style="grid-column: span 2; margin-top: 10px;">
+                                <span class="info-label">Môn học đang giảng dạy</span>
+                                ${subjectsHtml}
+                            </div>
+                            <div class="info-item" style="grid-column: span 2; margin-top: 10px;">
+                                <span class="info-label">Lớp chủ nhiệm</span>
+                                <span class="info-value">${data.homeroomClassName ? 'Lớp ' + data.homeroomClassName : 'Không có'}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                modalBody.innerHTML = `<div class="alert alert-danger" style="margin: 0;">Lỗi kết nối máy chủ khi lấy chi tiết thông tin.</div>`;
+            });
+    }
+
+    function closeDetailModal() {
+        const modal = document.getElementById('detailModal');
+        if (!modal) return;
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 250);
+    }
+    
+    window.addEventListener('click', function(e) {
+        const modal = document.getElementById('detailModal');
+        if (e.target === modal) {
+            closeDetailModal();
+        }
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const daySelect = document.getElementById("scheduleDay");
+        const periodSelect = document.getElementById("schedulePeriod");
+
+        function updatePeriodOptions() {
+            if (!daySelect || !periodSelect) return;
+            const selectedDay = parseInt(daySelect.value);
+            const periodOptions = periodSelect.options;
+
+            let firstAvailableOptionIdx = -1;
+
+            for (let i = 0; i < periodOptions.length; i++) {
+                const opt = periodOptions[i];
+                const periodVal = parseInt(opt.value);
+                
+                const isOccupied = occupiedSlots.some(slot => slot.day === selectedDay && slot.period === periodVal);
+
+                if (isOccupied) {
+                    opt.disabled = true;
+                    if (!opt.innerText.includes("(Đã bận)")) {
+                        opt.innerText = opt.innerText + " (Đã bận)";
+                    }
+                } else {
+                    opt.disabled = false;
+                    opt.innerText = opt.innerText.replace(" (Đã bận)", "");
+                    if (firstAvailableOptionIdx === -1) {
+                        firstAvailableOptionIdx = i;
+                    }
+                }
+            }
+
+            if (periodSelect.selectedOptions.length > 0 && periodSelect.selectedOptions[0].disabled) {
+                if (firstAvailableOptionIdx !== -1) {
+                    periodSelect.selectedIndex = firstAvailableOptionIdx;
+                } else {
+                    periodSelect.value = "";
+                }
+            }
+        }
+
+        if (daySelect && periodSelect) {
+            daySelect.addEventListener("change", updatePeriodOptions);
+            updatePeriodOptions();
+        }
+
+        function isTeacherForSubject(teacher, subject) {
+            if (!teacher || !teacher.teacherProfile || !teacher.teacherProfile.specialization) return false;
+            if (!subject || !subject.name) return false;
+            
+            const spec = teacher.teacherProfile.specialization.toLowerCase();
+            const subName = subject.name.toLowerCase();
+            const normSpec = spec.replace(/học$/, "").trim();
+            return subName.includes(normSpec);
+        }
+
+        function handleSubjectChange(subjectSelectId, teacherSelectId) {
+            const subSelect = document.getElementById(subjectSelectId);
+            const teaSelect = document.getElementById(teacherSelectId);
+            if (!subSelect || !teaSelect) return;
+            
+            const subId = subSelect.value;
+            if (!subId) {
+                Array.from(teaSelect.options).forEach(opt => {
+                    opt.disabled = false;
+                });
+                if (teaSelect.refreshAutocomplete) teaSelect.refreshAutocomplete();
+                return;
+            }
+            
+            const subject = allSubjects.find(s => s.id === subId);
+            if (!subject) return;
+            
+            Array.from(teaSelect.options).forEach(opt => {
+                if (!opt.value) return;
+                const teacher = allTeachers.find(t => t.id === opt.value);
+                if (teacher && isTeacherForSubject(teacher, subject)) {
+                    opt.disabled = false;
+                } else {
+                    opt.disabled = true;
+                }
+            });
+            
+            const selectedOpt = teaSelect.options[teaSelect.selectedIndex];
+            if (selectedOpt && selectedOpt.disabled) {
+                teaSelect.value = "";
+            }
+            if (teaSelect.refreshAutocomplete) teaSelect.refreshAutocomplete();
+        }
+
+        function handleTeacherChange(subjectSelectId, teacherSelectId) {
+            const subSelect = document.getElementById(subjectSelectId);
+            const teaSelect = document.getElementById(teacherSelectId);
+            if (!subSelect || !teaSelect) return;
+            
+            const teaId = teaSelect.value;
+            if (!teaId) return;
+            
+            const teacher = allTeachers.find(t => t.id === teaId);
+            if (!teacher || !teacher.teacherProfile || !teacher.teacherProfile.specialization) return;
+            
+            let matchedOptionValue = "";
+            Array.from(subSelect.options).forEach(opt => {
+                if (!opt.value) return;
+                const subject = allSubjects.find(s => s.id === opt.value);
+                if (subject && isTeacherForSubject(teacher, subject)) {
+                    matchedOptionValue = opt.value;
+                }
+            });
+            
+            if (matchedOptionValue) {
+                subSelect.value = matchedOptionValue;
+                if (subSelect.refreshAutocomplete) subSelect.refreshAutocomplete();
+                handleSubjectChange(subjectSelectId, teacherSelectId);
+            }
+        }
+
+        const assignSub = document.getElementById("assignSubjectSelect");
+        const assignTea = document.getElementById("assignTeacherSelect");
+        if (assignSub && assignTea) {
+            assignSub.addEventListener("change", () => handleSubjectChange("assignSubjectSelect", "assignTeacherSelect"));
+            assignTea.addEventListener("change", () => handleTeacherChange("assignSubjectSelect", "assignTeacherSelect"));
+        }
+
+        const schedSub = document.getElementById("scheduleSubjectSelect");
+        const schedTea = document.getElementById("scheduleTeacherSelect");
+        if (schedSub && schedTea) {
+            schedSub.addEventListener("change", () => handleSubjectChange("scheduleSubjectSelect", "scheduleTeacherSelect"));
+            schedTea.addEventListener("change", () => handleTeacherChange("scheduleSubjectSelect", "scheduleTeacherSelect"));
+        }
+
+        function showMessage(type, message) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${alertClass}`;
+            alertDiv.innerText = message;
+            
+            const mainContainer = document.querySelector('main[role="main"]');
+            if (mainContainer) {
+                mainContainer.insertBefore(alertDiv, mainContainer.firstChild);
+                setTimeout(() => alertDiv.remove(), 4000);
+            }
+        }
+
+        async function refreshStudentDropdown() {
+            const select = document.getElementById('studentSelect');
+            if (!select) return;
+            
+            try {
+                const response = await fetch('/Admin/GetEligibleStudentsJson');
+                const eligibleStudents = await response.json();
+                
+                select.innerHTML = '<option value="">-- Chọn học sinh --</option>';
+                eligibleStudents.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.text = `${s.fullName} (${s.userCode})`;
+                    select.appendChild(opt);
+                });
+                
+                if (select.refreshAutocomplete) {
+                    select.refreshAutocomplete();
+                }
+            } catch (err) {
+                console.error('Error refreshing student dropdown:', err);
+            }
+        }
+
+        function rebuildStudentTable(students) {
+            allStudentsInClass = students || [];
+            updateStudentsView();
+        }
+
+        function rebuildTeachingTable(assignments) {
+            const tbody = document.getElementById('teachingAssignmentsTableBody');
+            if (!tbody) return;
+            
+            if (assignments.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted" style="padding: 30px 0;">Lớp học hiện tại chưa phân công giáo viên bộ môn.</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            assignments.forEach((ta, index) => {
+                const date = new Date(ta.assignedDate);
+                const formattedDate = isNaN(date.getTime()) 
+                    ? '—' 
+                    : date.toLocaleDateString('vi-VN') + ' ' + String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+                
+                html += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td class="fw-bold">${ta.subjectName}</td>
+                        <td>${ta.teacherName}</td>
+                        <td><span class="badge bg-light text-dark border" style="padding: 5px 10px;">${ta.teacherCode}</span></td>
+                        <td>${formattedDate}</td>
+                        <td>
+                            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="showDetail('${ta.teacherId}')" style="padding: 5px 10px; font-size: 0.8rem; border-color: #cbd5e1; background: #ffffff; color: #475569;">👁 Chi tiết</button>
+                                <form action="/Admin/RemoveTeaching" method="post" class="remove-teaching-form" data-subject-id="${ta.subjectId}" style="margin: 0;">
+                                    <input type="hidden" name="classId" value="${classId}" />
+                                    <input type="hidden" name="subjectId" value="${ta.subjectId}" />
+                                    <button type="submit" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 0.8rem;">🗑 Xóa phân công</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            
+            wireRemoveTeachingForms();
+            refreshAvailableSubjectsDropdown(assignments);
+        }
+
+        function refreshAvailableSubjectsDropdown(assignments) {
+            const select = document.getElementById('assignSubjectSelect');
+            if (!select) return;
+            
+            Array.from(select.options).forEach(opt => {
+                if (!opt.value) return;
+                const subId = opt.value;
+                const isAssigned = assignments.some(ta => ta.subjectId === subId);
+                
+                let text = opt.text.replace(" - [Đã phân công]", "");
+                if (isAssigned) {
+                    opt.text = text + " - [Đã phân công]";
+                } else {
+                    opt.text = text;
+                }
+            });
+        }
+
+        function rebuildScheduleGrid(schedulesList) {
+            // Clear all grid cells except period headers
+            document.querySelectorAll('.schedule-cell[data-day]').forEach(cell => {
+                cell.innerHTML = '';
+            });
+
+            // Populate cells
+            schedulesList.forEach(item => {
+                const cell = document.querySelector(`.schedule-cell[data-day="${item.dayOfWeek}"][data-period="${item.period}"]`);
+                if (cell) {
+                    cell.innerHTML = `
+                        <div class="schedule-item" style="background-color: #e0e7ff; border-left: 4px solid var(--color-primary); padding: 4px 8px; border-radius: 4px; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div class="sub" style="font-weight: 700; color: #312e81; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.subjectName}</div>
+                            <div class="teacher" style="color: #4338ca; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">GV: ${item.teacherName}</div>
+                            <div class="room" style="color: #6366f1; font-size: 0.7rem; font-weight: 500; text-align: right;"> ${item.room}</div>
+                        </div>
+                    `;
+                }
+            });
+            
+            occupiedSlots = schedulesList.map(s => ({ day: s.dayOfWeek, period: s.period }));
+            updatePeriodOptions();
+        }
+
+        // Wire AJAX forms
+        const assignStudentForm = document.getElementById("assignStudentForm");
+        if (assignStudentForm) {
+            assignStudentForm.addEventListener("submit", async function (e) {
+                e.preventDefault();
+                const submitBtn = assignStudentForm.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerText = 'Đang thêm...';
+                }
+                const formData = new FormData(assignStudentForm);
+                try {
+                    const response = await fetch(assignStudentForm.action, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: formData
+                    });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showMessage('success', result.message);
+                        const studentsResp = await fetch(`/Admin/GetClassStudentsJson/${classId}`);
+                        const studentsList = await studentsResp.json();
+                        rebuildStudentTable(studentsList);
+                        await refreshStudentDropdown();
+                    } else {
+                        showMessage('error', result.message);
+                    }
+                } catch (err) {
+                    showMessage('error', 'Lỗi kết nối đến máy chủ.');
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = 'Thêm Vào Lớp';
+                    }
+                }
+            });
+        }
+
+        function wireRemoveStudentForms() {
+            document.querySelectorAll(".remove-student-form").forEach(form => {
+                if (form.dataset.ajaxWired) return;
+                form.dataset.ajaxWired = "true";
+                
+                form.addEventListener("submit", async function (e) {
+                    e.preventDefault();
+                    if (!confirm('Bạn có chắc chắn muốn xóa học sinh này khỏi lớp?')) return;
+                    
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerText = 'Đang xóa...';
+                    }
+                    
+                    const formData = new FormData(form);
+                    try {
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                            body: formData
+                        });
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            showMessage('success', result.message);
+                            const studentsResp = await fetch(`/Admin/GetClassStudentsJson/${classId}`);
+                            const studentsList = await studentsResp.json();
+                            rebuildStudentTable(studentsList);
+                            await refreshStudentDropdown();
+                        } else {
+                            showMessage('error', result.message);
+                            if (submitBtn) {
+                                submitBtn.disabled = false;
+                                submitBtn.innerText = '🗑 Xóa khỏi lớp';
+                            }
+                        }
+                    } catch (err) {
+                        showMessage('error', 'Lỗi kết nối đến máy chủ.');
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerText = '🗑 Xóa khỏi lớp';
+                        }
+                    }
+                });
+            });
+        }
+
+        function wireRemoveTeachingForms() {
+            document.querySelectorAll(".remove-teaching-form").forEach(form => {
+                if (form.dataset.ajaxWired) return;
+                form.dataset.ajaxWired = "true";
+                
+                form.addEventListener("submit", async function (e) {
+                    e.preventDefault();
+                    if (!confirm('Bạn có chắc chắn muốn xóa giáo viên này khỏi phân công giảng dạy của lớp?')) return;
+                    
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerText = 'Đang xóa...';
+                    }
+                    
+                    const formData = new FormData(form);
+                    try {
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                            body: formData
+                        });
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            showMessage('success', result.message);
+                            const teachingResp = await fetch(`/Admin/GetClassTeachersJson/${classId}`);
+                            const teachingList = await teachingResp.json();
+                            rebuildTeachingTable(teachingList);
+                        } else {
+                            showMessage('error', result.message);
+                            if (submitBtn) {
+                                submitBtn.disabled = false;
+                                submitBtn.innerText = '🗑 Xóa phân công';
+                            }
+                        }
+                    } catch (err) {
+                        showMessage('error', 'Lỗi kết nối đến máy chủ.');
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerText = '🗑 Xóa phân công';
+                        }
+                    }
+                });
+            });
+        }
+
+        const assignHomeroomForm = document.getElementById("assignHomeroomForm");
+        if (assignHomeroomForm) {
+            assignHomeroomForm.addEventListener("submit", async function (e) {
+                e.preventDefault();
+                const submitBtn = assignHomeroomForm.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerText = 'Đang phân công...';
+                }
+                const formData = new FormData(assignHomeroomForm);
+                try {
+                    const response = await fetch(assignHomeroomForm.action, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: formData
+                    });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showMessage('success', result.message);
+                        const homeroomResp = await fetch(`/Admin/GetClassHomeroomJson/${classId}`);
+                        const homeroomData = await homeroomResp.json();
+                        
+                        const container = document.getElementById('homeroomTeacherContainer');
+                        if (container && homeroomData.success && homeroomData.homeroom) {
+                            const hr = homeroomData.homeroom;
+                            const firstChar = hr.teacherName ? hr.teacherName[0].toUpperCase() : '?';
+                            container.innerHTML = `
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="avatar-placeholder" style="width: 42px; height: 42px; background-color: #d1fae5; color: var(--color-success); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem;">
+                                        ${firstChar}
+                                    </div>
+                                    <div>
+                                        <div class="text-muted" style="font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px;">GIÁO VIÊN CHỦ NHIỆM</div>
+                                        <div class="fw-bold" style="color: #0f172a; font-size: 0.95rem;">${hr.teacherName}</div>
+                                        <div class="text-muted" style="font-size: 0.8rem;">Mã GV: ${hr.teacherCode}</div>
+                                    </div>
+                                </div>
+                            `;
+                        } else if (container) {
+                            container.innerHTML = `
+                                <div>
+                                    <div class="text-muted" style="font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px;">GIÁO VIÊN CHỦ NHIỆM</div>
+                                    <div class="text-muted" style="font-size: 0.9rem; font-style: italic;">Chưa phân công</div>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        showMessage('error', result.message);
+                    }
+                } catch (err) {
+                    showMessage('error', 'Lỗi kết nối đến máy chủ.');
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = 'Phân công';
+                    }
+                }
+            });
+        }
+
+        const assignTeachingForm = document.getElementById("assignTeachingForm");
+        if (assignTeachingForm) {
+            assignTeachingForm.addEventListener("submit", async function (e) {
+                e.preventDefault();
+                const submitBtn = assignTeachingForm.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerText = 'Đang phân công...';
+                }
+                const formData = new FormData(assignTeachingForm);
+                try {
+                    const response = await fetch(assignTeachingForm.action, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: formData
+                    });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showMessage('success', result.message);
+                        const teachingResp = await fetch(`/Admin/GetClassTeachersJson/${classId}`);
+                        const teachingList = await teachingResp.json();
+                        rebuildTeachingTable(teachingList);
+                        
+                        const subjectSelect = document.getElementById('assignSubjectSelect');
+                        const teacherSelect = document.getElementById('assignTeacherSelect');
+                        if (subjectSelect) subjectSelect.value = '';
+                        if (teacherSelect) teacherSelect.value = '';
+                        if (subjectSelect && subjectSelect.refreshAutocomplete) subjectSelect.refreshAutocomplete();
+                        if (teacherSelect && teacherSelect.refreshAutocomplete) teacherSelect.refreshAutocomplete();
+                    } else {
+                        showMessage('error', result.message);
+                    }
+                } catch (err) {
+                    showMessage('error', 'Lỗi kết nối đến máy chủ.');
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = 'Phân Công';
+                    }
+                }
+            });
+        }
+
+        const createScheduleForm = document.getElementById("createScheduleForm");
+        if (createScheduleForm) {
+            createScheduleForm.addEventListener("submit", async function (e) {
+                e.preventDefault();
+                const formData = new FormData(createScheduleForm);
+                try {
+                    const response = await fetch(createScheduleForm.action, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: formData
+                    });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showMessage('success', result.message);
+                        const roomInput = createScheduleForm.querySelector('input[name="Room"]');
+                        if (roomInput) roomInput.value = '';
+                        const schedulesResp = await fetch(`/Admin/GetClassScheduleJson/${classId}`);
+                        const schedulesList = await schedulesResp.json();
+                        rebuildScheduleGrid(schedulesList);
+                    } else {
+                        showMessage('error', result.message);
+                    }
+                } catch (err) {
+                    showMessage('error', 'Lỗi kết nối đến máy chủ.');
+                }
+            });
+        }
+
+        // Initialize lists on page load
+        updateStudentsView();
+        
+        const initialAssignments = @Html.Raw(Json.Serialize(teachingAssignments)) || [];
+        rebuildTeachingTable(initialAssignments);
+    });
+</script>

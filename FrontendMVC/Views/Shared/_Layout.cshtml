@@ -1,0 +1,234 @@
+@{
+    var role = Context.Request.Cookies["user_role"];
+    var name = Context.Request.Cookies["user_name"];
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - School Management</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <script src="~/js/site.js" asp-append-version="true" defer></script>
+</head>
+<body>
+    @if (!string.IsNullOrEmpty(role))
+    {
+        <!-- Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sidebar-brand">
+                UNIVERSITY SYSTEM
+            </div>
+            <ul class="sidebar-menu">
+                @if (role == "Admin")
+                {
+                    <li class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["Action"]?.ToString() == "Dashboard" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Dashboard"> Tổng quan Dashboard</a>
+                    </li>
+                    <li class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["Action"]?.ToString() == "Classes" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Classes">Quản lý lớp học</a>
+                    </li>
+                    <li class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["Action"]?.ToString() == "Subjects" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Subjects"> Quản lý môn học</a>
+                    </li>
+                    <li class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Admin" && ViewContext.RouteData.Values["Action"]?.ToString() == "Promotion" ? "active" : "")">
+                        <a asp-controller="Admin" asp-action="Promotion">Lên lớp & Tốt nghiệp</a>
+                    </li>
+                    <li class="sidebar-item-collapsible">
+                        <a href="javascript:void(0);" class="sidebar-collapsible-trigger" id="user-mgmt-trigger" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <span>Quản lý người dùng</span>
+                            <span class="chevron" style="font-size: 0.75rem; font-weight: bold;">▶</span>
+                        </a>
+                        <ul class="sidebar-submenu" id="user-mgmt-submenu">
+                            <li class="submenu-item" id="menu-all-users">
+                                <a href="/users">• Tất cả người dùng</a>
+                            </li>
+                            <li class="submenu-item" id="menu-teachers">
+                                <a href="/users/teachers">• Giáo viên</a>
+                            </li>
+                            <li class="submenu-item" id="menu-students">
+                                <a href="/users/students">• Học sinh</a>
+                            </li>
+                        </ul>
+                    </li>
+                }
+                else if (role == "Teacher")
+                {
+                    <li class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Teacher" && ViewContext.RouteData.Values["Action"]?.ToString() == "Dashboard" ? "active" : "")">
+                        <a asp-controller="Teacher" asp-action="Dashboard"> Lớp học của tôi</a>
+                    </li>
+                    <li class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Teacher" && ViewContext.RouteData.Values["Action"]?.ToString() == "Profile" ? "active" : "")">
+                        <a asp-controller="Teacher" asp-action="Profile"> Thông tin cá nhân</a>
+                    </li>
+                }
+                else if (role == "Student")
+                {
+                    <li class="@(ViewContext.RouteData.Values["Controller"]?.ToString() == "Student" && ViewContext.RouteData.Values["Action"]?.ToString() == "Dashboard" ? "active" : "")">
+                        <a asp-controller="Student" asp-action="Dashboard">Bảng điểm & Học tập</a>
+                    </li>
+                }
+            </ul>
+            <div class="sidebar-footer">
+                <a asp-controller="Auth" asp-action="Logout"> Đăng xuất</a>
+            </div>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div class="app-container">
+            <header class="app-header">
+                <h2>@ViewData["Title"]</h2>
+                <div class="user-badge">
+                    <div class="avatar-placeholder">@(string.IsNullOrEmpty(name) ? "U" : name[0].ToString().ToUpper())</div>
+                    <div>
+                        <div class="fw-bold">@name</div>
+                        <div class="text-muted" style="font-size: 0.8rem;">Vai trò: @role</div>
+                    </div>
+                </div>
+            </header>
+
+            <main role="main">
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+                }
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+                }
+                @RenderBody()
+            </main>
+        </div>
+    }
+    else
+    {
+        <!-- Auth Layout -->
+        <main role="main" style="width: 100%;">
+            @RenderBody()
+        </main>
+    }
+
+    @await RenderSectionAsync("Scripts", required: false)
+
+    <!-- Collapsible Menu Custom Styles and Script -->
+    <style>
+        .sidebar-item-collapsible {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-collapsible-trigger {
+            cursor: pointer;
+        }
+
+        .sidebar-submenu {
+            list-style: none;
+            padding-left: 0;
+            margin-left: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.25s ease-out;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .sidebar-submenu.open {
+            max-height: 200px;
+            transition: max-height 0.3s ease-in;
+        }
+
+        .submenu-item {
+            padding-left: 20px;
+        }
+
+        .submenu-item a {
+            padding: 10px 20px !important;
+            font-size: 0.9rem !important;
+            color: #94a3b8 !important;
+            background-color: transparent !important;
+            border-radius: 8px !important;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .submenu-item a:hover {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            color: #f8fafc !important;
+        }
+
+        .submenu-item.active a {
+            background-color: var(--color-primary) !important;
+            color: #fff !important;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+        }
+
+        .sidebar-collapsible-trigger.parent-active {
+            color: #f8fafc !important;
+            background-color: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+        }
+    </style>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const trigger = document.getElementById("user-mgmt-trigger");
+            const submenu = document.getElementById("user-mgmt-submenu");
+            
+            if (trigger && submenu) {
+                const chevron = trigger.querySelector(".chevron");
+                
+                function toggleSubmenu(open) {
+                    if (open) {
+                        submenu.classList.add("open");
+                        chevron.innerText = "▼";
+                    } else {
+                        submenu.classList.remove("open");
+                        chevron.innerText = "▶";
+                    }
+                }
+                
+                trigger.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    const isOpen = submenu.classList.contains("open");
+                    toggleSubmenu(!isOpen);
+                });
+                
+                const currentPath = window.location.pathname.toLowerCase();
+                const menuAll = document.getElementById("menu-all-users");
+                const menuTeachers = document.getElementById("menu-teachers");
+                const menuStudents = document.getElementById("menu-students");
+                
+                let isSubmenuActive = false;
+                
+                function setActive(menuItem) {
+                    if (menuItem) {
+                        menuItem.classList.add("active");
+                        const link = menuItem.querySelector("a");
+                        if (link) {
+                            link.innerText = link.innerText.replace("•", "●");
+                        }
+                        isSubmenuActive = true;
+                    }
+                }
+                
+                // Match exact paths
+                if (currentPath === "/users" || currentPath === "/admin/users") {
+                    setActive(menuAll);
+                } else if (currentPath === "/users/teachers") {
+                    setActive(menuTeachers);
+                } else if (currentPath === "/users/students") {
+                    setActive(menuStudents);
+                }
+                
+                if (isSubmenuActive) {
+                    toggleSubmenu(true);
+                    trigger.classList.add("parent-active");
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -7,6 +7,14 @@ public enum UserRole
     Teacher,
 }
 
+public enum StudentStatus
+{
+    Active,
+    Graduated,
+    Inactive,
+    Suspended,
+}
+
 public enum Gender
 {
     Male,
@@ -39,6 +47,7 @@ public class User
 
     // Chỉ Student mới có
     public Guid? ClassId { get; set; }
+    public StudentStatus? StudentStatus { get; set; }
 
     // Chỉ Teacher mới có
     public virtual TeacherProfile? TeacherProfile { get; set; }

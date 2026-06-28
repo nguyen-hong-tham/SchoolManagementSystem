@@ -1,0 +1,181 @@
+@model UserViewModel
+@{
+    ViewData["Title"] = "Hồ sơ cá nhân Giáo viên";
+    Layout = "_Layout";
+    var hrClass = ViewBag.HomeroomClass as ClassViewModel;
+    var profile = Model.TeacherProfile;
+    var assignments = ViewBag.TeachingAssignments as List<TeachingAssignmentViewModel> ?? new List<TeachingAssignmentViewModel>();
+    
+    // Extract unique classes and subjects taught
+    var teachingClasses = assignments.Select(a => a.ClassName).Distinct().OrderBy(c => c).ToList();
+    var teachingSubjects = assignments.Select(a => a.SubjectName).Distinct().OrderBy(s => s).ToList();
+}
+
+<div style="max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 30px;">
+    
+    <!-- Top Header Profile Card (Header only contains Avatar and Name) -->
+    <div class="custom-card" style="padding: 30px; display: flex; align-items: center; gap: 25px; flex-wrap: wrap; background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); color: #ffffff; position: relative; overflow: hidden; border: none; box-shadow: var(--shadow-lg);">
+        <!-- Decorative subtle background circle -->
+        <div style="position: absolute; right: -50px; bottom: -50px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255,255,255,0.08);"></div>
+        <div style="position: absolute; right: 100px; top: -30px; width: 100px; height: 100px; border-radius: 50%; background: rgba(255,255,255,0.05);"></div>
+
+        <div class="avatar-placeholder" style="width: 90px; height: 90px; font-size: 2.5rem; background-color: rgba(255,255,255,0.2); color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; border: 3px solid rgba(255,255,255,0.4); z-index: 1;">
+            @(string.IsNullOrEmpty(Model.FullName) ? "T" : Model.FullName[0].ToString().ToUpper())
+        </div>
+        
+        <div style="z-index: 1;">
+            <h2 style="font-size: 1.85rem; font-weight: 700; margin: 0; color: #ffffff; letter-spacing: -0.02em;">@Model.FullName</h2>
+        </div>
+    </div>
+
+    <!-- Details Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px;">
+        
+        <!-- Section 1: Personal Details -->
+        <div class="custom-card" style="margin-bottom: 0;">
+            <div class="card-header-flex" style="border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--color-primary); display: flex; align-items: center; gap: 8px;">
+                     Thông Tin Cá Nhân
+                </h3>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 18px;">
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center;">
+                    <span style="font-weight: 500; color: var(--color-text-light);">Mã giáo viên</span>
+                    <span style="font-weight: 600; color: var(--color-text-dark);">@Model.UserCode</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center;">
+                    <span style="font-weight: 500; color: var(--color-text-light);">Họ và tên</span>
+                    <span style="font-weight: 600; color: var(--color-text-dark);">@Model.FullName</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center;">
+                    <span style="font-weight: 500; color: var(--color-text-light);">Giới tính</span>
+                    <span style="font-weight: 600; color: var(--color-text-dark);">@(Model.Gender == 0 ? "Nam" : "Nữ")</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center;">
+                    <span style="font-weight: 500; color: var(--color-text-light);">Ngày sinh</span>
+                    <span style="font-weight: 600; color: var(--color-text-dark);">@Model.DateOfBirth.ToString("dd/MM/yyyy")</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center;">
+                    <span style="font-weight: 500; color: var(--color-text-light);">Email</span>
+                    <span style="font-weight: 600; color: var(--color-text-dark);">@(string.IsNullOrEmpty(Model.Email) ? "—" : Model.Email)</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center;">
+                    <span style="font-weight: 500; color: var(--color-text-light);">Số điện thoại</span>
+                    <span style="font-weight: 600; color: var(--color-text-dark);">@(string.IsNullOrEmpty(Model.PhoneNumber) ? "—" : Model.PhoneNumber)</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: start;">
+                    <span style="font-weight: 500; color: var(--color-text-light);">Địa chỉ</span>
+                    <span style="font-weight: 600; color: var(--color-text-dark); line-height: 1.4;">@(string.IsNullOrEmpty(Model.Address) ? "—" : Model.Address)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Professional Details -->
+        <div class="custom-card" style="margin-bottom: 0;">
+            <div class="card-header-flex" style="border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--color-primary); display: flex; align-items: center; gap: 8px;">
+                     Thông Tin Chuyên Môn
+                </h3>
+            </div>
+            
+            @if (profile == null)
+            {
+                <div class="text-center text-muted" style="padding: 30px 0;">
+                    <p style="font-style: italic;">Chưa cập nhật thông tin hồ sơ chuyên môn.</p>
+                </div>
+            }
+            else
+            {
+                <div style="display: flex; flex-direction: column; gap: 18px;">
+                    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center;">
+                        <span style="font-weight: 500; color: var(--color-text-light);">Học vị</span>
+                        <span style="font-weight: 600; color: var(--color-text-dark);">@profile.AcademicDegree</span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center;">
+                        <span style="font-weight: 500; color: var(--color-text-light);">Chuyên môn</span>
+                        <span style="font-weight: 600; color: var(--color-text-dark);">@profile.Specialization</span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center;">
+                        <span style="font-weight: 500; color: var(--color-text-light);">Tổ bộ môn / Khoa</span>
+                        <span style="font-weight: 600; color: var(--color-text-dark);">@profile.Department</span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center;">
+                        <span style="font-weight: 500; color: var(--color-text-light);">Ngày nhận công tác</span>
+                        <span style="font-weight: 600; color: var(--color-text-dark);">@profile.HireDate.ToString("dd/MM/yyyy")</span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Section 3: Teaching Assignments (Full-width underneath) -->
+        <div class="custom-card" style="grid-column: span 2; margin-bottom: 0;">
+            <div class="card-header-flex" style="border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--color-primary); display: flex; align-items: center; gap: 8px;">
+                     Phân Công Giảng Dạy
+                </h3>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- Classes assigned -->
+                <div>
+                    <span style="font-weight: 600; color: var(--color-text-light); display: block; margin-bottom: 8px; font-size: 0.9rem;">Lớp đang phụ trách</span>
+                    @if (!teachingClasses.Any())
+                    {
+                        <span style="font-style: italic; color: var(--color-text-light);">Chưa phân công lớp giảng dạy</span>
+                    }
+                    else
+                    {
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            @foreach (var c in teachingClasses)
+                            {
+                                <span class="badge" style="background-color: #f8fafc; color: #1e293b; border: 1px solid #e2e8f0; padding: 6px 12px; font-weight: 700; font-size: 0.85rem; border-radius: 6px; text-transform: uppercase;">Lớp @c</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <!-- Subjects assigned -->
+                <div>
+                    <span style="font-weight: 600; color: var(--color-text-light); display: block; margin-bottom: 8px; font-size: 0.9rem;">Môn học đang giảng dạy</span>
+                    @if (!teachingSubjects.Any())
+                    {
+                        <span style="font-style: italic; color: var(--color-text-light);">Chưa phân công môn giảng dạy</span>
+                    }
+                    else
+                    {
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            @foreach (var s in teachingSubjects)
+                            {
+                                <span class="badge" style="background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 6px 12px; font-weight: 700; font-size: 0.85rem; border-radius: 6px; text-transform: uppercase;">@s</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <!-- Homeroom Assignment -->
+                <div style="border-top: 1px dashed var(--border-color); padding-top: 15px; display: flex; align-items: center; gap: 15px;">
+                    <span style="font-weight: 600; color: var(--color-text-light); font-size: 0.9rem;">Lớp chủ nhiệm:</span>
+                    @if (hrClass == null)
+                    {
+                        <span style="font-style: italic; color: var(--color-text-light);">Không có lớp chủ nhiệm</span>
+                    }
+                    else
+                    {
+                        <span class="fw-bold" style="color: #0d9488; font-size: 1rem;">Lớp @hrClass.Name (Năm học: @hrClass.SchoolYear)</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

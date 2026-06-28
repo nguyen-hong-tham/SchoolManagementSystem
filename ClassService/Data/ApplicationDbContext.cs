@@ -21,4 +21,25 @@ public class ApplicationDbContext : DbContext
     public DbSet<CachedUser> CachedUsers { get; set; }
 
     public DbSet<CachedSubject> CachedSubjects { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<StudentClass>(entity =>
+        {
+            entity
+                .HasIndex(sc => new
+                {
+                    sc.StudentId,
+                    sc.SchoolYear,
+                    sc.IsCurrent,
+                })
+                .HasFilter("\"IsCurrent\" = true")
+                .IsUnique();
+
+            entity.HasIndex(sc => new { sc.ClassId, sc.IsCurrent });
+            entity.HasIndex(sc => sc.StudentId);
+        });
+    }
 }

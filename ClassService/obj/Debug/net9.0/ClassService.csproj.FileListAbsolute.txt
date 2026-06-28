@@ -132,3 +132,4 @@ D:\ASP.NET\UniversityManagement\ClassService\bin\Debug\net9.0\MassTransit.Abstra
 D:\ASP.NET\UniversityManagement\ClassService\bin\Debug\net9.0\MassTransit.RabbitMqTransport.dll
 D:\ASP.NET\UniversityManagement\ClassService\bin\Debug\net9.0\RabbitMQ.Client.dll
 D:\ASP.NET\UniversityManagement\ClassService\bin\Debug\net9.0\Scalar.AspNetCore.dll
+D:\ASP.NET\UniversityManagement\ClassService\obj\Debug\net9.0\ClassService.sourcelink.json

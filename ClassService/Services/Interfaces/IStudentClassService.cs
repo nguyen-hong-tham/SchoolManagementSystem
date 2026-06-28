@@ -8,10 +8,16 @@ public interface IStudentClassService
     Task<StudentClassResponseDto> AssignStudentAsync(Guid classId, AssignStudentDto dto);
 
     // Xem danh sách học sinh của lớp
-    Task<IEnumerable<StudentClassResponseDto>> GetStudentsByClassIdAsync(Guid classId);
+    Task<IEnumerable<StudentClassResponseDto>> GetStudentsByClassIdAsync(
+        Guid classId,
+        bool onlyCurrent = false
+    );
 
     // Xem lớp hiện tại của học sinh
     Task<StudentClassResponseDto?> GetCurrentClassAsync(Guid studentId);
+
+    // Xem lịch sử học tập lớp học của học sinh
+    Task<IEnumerable<StudentClassResponseDto>> GetClassHistoryAsync(Guid studentId);
 
     // Chuyển lớp
     Task<StudentClassResponseDto> TransferStudentAsync(Guid studentId, TransferStudentDto dto);
@@ -21,4 +27,10 @@ public interface IStudentClassService
 
     // Xóa học sinh khỏi lớp
     Task<bool> RemoveStudentAsync(Guid classId, Guid studentId);
+
+    // Lấy ID học sinh đã có lớp học hiện tại
+    Task<IEnumerable<Guid>> GetAssignedStudentIdsAsync();
+
+    // Lên lớp / tốt nghiệp hàng loạt
+    Task<IEnumerable<StudentClassResponseDto>> PromoteBatchAsync(PromoteBatchDto dto);
 }

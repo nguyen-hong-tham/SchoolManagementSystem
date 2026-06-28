@@ -7,6 +7,7 @@ using ClassService.Services.Interfaces;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -68,6 +69,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<IStudentClassRepository, StudentClassRepository>();

@@ -1,0 +1,42 @@
+@model IEnumerable<TeachingAssignmentViewModel>
+@{
+    ViewData["Title"] = "Cổng Thông Tin Giáo Viên";
+    Layout = "_Layout";
+}
+
+<div class="custom-card">
+    <div class="card-header-flex">
+        <h3>Lớp Học & Môn Học Giảng Dạy</h3>
+    </div>
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="text-center text-muted" style="padding: 40px 0;">
+            <p style="font-size: 1.1rem; margin-bottom: 10px;">Bạn chưa được phân công giảng dạy bất kỳ lớp học nào.</p>
+            <p style="font-size: 0.9rem;">Vui lòng liên hệ Administrator để được cập nhật lịch phân công giảng dạy.</p>
+        </div>
+    }
+    else
+    {
+        <p class="text-muted" style="margin-bottom: 20px;">Dưới đây là danh sách các lớp học và môn học mà bạn được phân công giảng dạy. Chọn <strong>Nhập & Xem điểm</strong> để quản lý học sinh và điểm số.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px;">
+            @foreach (var item in Model)
+            {
+                <div class="custom-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between; border-left: 6px solid var(--color-primary); box-shadow: var(--shadow-md);">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="badge badge-primary">Khối lớp @(item.ClassName.StartsWith("10") ? "10" : (item.ClassName.StartsWith("11") ? "11" : "12"))</span>
+                            <span class="text-muted" style="font-size: 0.85rem;">Năm: @item.SchoolYear</span>
+                        </div>
+                        <h4 style="font-size: 1.5rem; font-weight: 700; margin-top: 15px; color: var(--color-text-dark);">Lớp @item.ClassName</h4>
+                        <p style="margin-top: 5px; color: var(--color-primary); font-weight: 600; font-size: 1.1rem;"> Môn: @item.SubjectName</p>
+                    </div>
+                    <div style="margin-top: 25px; border-top: 1px solid var(--border-color); padding-top: 15px; display: flex; justify-content: flex-end;">
+                        <a asp-action="ClassStudents" asp-route-classId="@item.ClassId" asp-route-subjectId="@item.SubjectId" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.9rem; border-radius: 8px;">Nhập & Xem điểm →</a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

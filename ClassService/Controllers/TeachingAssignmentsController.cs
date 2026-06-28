@@ -81,10 +81,28 @@ public class TeachingAssignmentsController : ControllerBase
     [HttpGet("teachers/{teacherId:guid}/classes")]
     public async Task<ActionResult<IEnumerable<TeachingAssignmentResponseDto>>> GetTeacherClasses(
         Guid teacherId,
-        [FromQuery] string schoolYear
+        [FromQuery] string? schoolYear
     )
     {
         var result = await _teachingService.GetTeacherClassesAsync(teacherId, schoolYear);
         return Ok(result);
+    }
+
+    [HttpGet("teaching-assignments")]
+    public async Task<ActionResult<IEnumerable<TeachingAssignmentResponseDto>>> GetAllAssignments([FromQuery] string? schoolYear)
+    {
+        var result = await _teachingService.GetAllAssignmentsAsync(schoolYear);
+        return Ok(result);
+    }
+
+    [HttpDelete("classes/{classId:guid}/teachers/{subjectId:guid}")]
+    public async Task<IActionResult> RemoveTeacherAssignment(Guid classId, Guid subjectId)
+    {
+        var success = await _teachingService.RemoveAssignmentAsync(classId, subjectId);
+        if (!success)
+        {
+            return BadRequest(new { message = "Không thể xóa phân công giảng dạy hoặc phân công không tồn tại." });
+        }
+        return NoContent();
     }
 }

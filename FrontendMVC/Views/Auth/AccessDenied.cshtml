@@ -1,0 +1,17 @@
+@{
+    ViewData["Title"] = "Không Có Quyền Truy Cập";
+    Layout = "_Layout";
+}
+
+<div style="min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="custom-card text-center" style="max-width: 500px; padding: 40px;">
+        <div style="font-size: 4rem; margin-bottom: 20px; color: #ef4444;">⚠️</div>
+        <h2 style="font-weight: 700; margin-bottom: 15px; color: #1e293b;">Không Có Quyền Truy Cập</h2>
+        <p style="color: #64748b; margin-bottom: 30px; line-height: 1.6;">
+            Bạn không có quyền truy cập vào chức năng hoặc trang này. Vui lòng liên hệ Administrator nếu bạn nghĩ đây là một sự nhầm lẫn.
+        </p>
+        <div>
+            <a asp-controller="Auth" asp-action="Login" class="btn btn-primary">Quay Lại Đăng Nhập</a>
+        </div>
+    </div>
+</div>

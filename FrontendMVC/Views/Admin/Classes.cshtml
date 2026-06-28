@@ -1,0 +1,77 @@
+@model IEnumerable<ClassViewModel>
+@{
+    ViewData["Title"] = "Quản Lý Lớp Học";
+    Layout = "_Layout";
+    var searchValue = ViewBag.Search as string;
+}
+
+<div class="custom-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+        <!-- Add Class Button Outside Table -->
+        <a asp-action="CreateClass" class="btn btn-primary" style="padding: 10px 20px; text-decoration: none;">
+            ➕ Thêm Lớp Học Mới
+        </a>
+
+        <!-- Search Bar -->
+        <form asp-action="Classes" method="get" style="display: flex; gap: 10px; align-items: center;">
+            <select name="grade" class="form-control" onchange="this.form.submit()" style="width: 150px; padding: 8px 12px; margin-bottom: 0;">
+                <option value="">-- Tất cả khối --</option>
+                <option value="10" selected="@(ViewBag.GradeFilter == 10)">Khối 10</option>
+                <option value="11" selected="@(ViewBag.GradeFilter == 11)">Khối 11</option>
+                <option value="12" selected="@(ViewBag.GradeFilter == 12)">Khối 12</option>
+            </select>
+            <input type="text" name="search" class="form-control" placeholder="Tìm theo tên lớp..." value="@searchValue" style="width: 250px; padding: 8px 12px; margin-bottom: 0;" />
+            <button type="submit" class="btn btn-secondary" style="padding: 8px 16px;">Tìm kiếm</button>
+            @if (!string.IsNullOrEmpty(searchValue) || ViewBag.GradeFilter != null)
+            {
+                <a asp-action="Classes" class="btn btn-secondary" style="padding: 8px 16px; text-decoration: none; display: flex; align-items: center;">Xóa lọc</a>
+            }
+        </form>
+
+    </div>
+
+    <!-- Classes Table -->
+    <div class="table-responsive">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">STT</th>
+                    <th>Tên Lớp</th>
+                    <th>Khối</th>
+                    <th>Năm Học</th>
+                    <th style="text-align: right; width: 320px;">Hành Động</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model == null || !Model.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-muted" style="padding: 30px 0;">Không tìm thấy lớp học nào.</td>
+                    </tr>
+                }
+                else
+                {
+                    int index = 1;
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@(index++)</td>
+                            <td class="fw-bold" style="font-size: 1.1rem; color: #1e293b;">Lớp @item.Name</td>
+                            <td><span class="badge badge-primary">Khối @item.GradeLevel</span></td>
+                            <td>@item.SchoolYear</td>
+                            <td>
+                                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                    <a asp-action="ClassDetail" asp-route-id="@item.Id" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; text-decoration: none;">Chi tiết</a>
+                                    <a asp-action="EditClass" asp-route-id="@item.Id" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; text-decoration: none; color: #4f46e5; border-color: #c7d2fe;"> Sửa</a>
+                                    <form asp-action="DeleteClass" asp-route-id="@item.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa lớp học @item.Name? Tất cả thời khóa biểu và phân lớp liên quan cũng sẽ bị ảnh hưởng.');">
+                                        <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;">Xóa</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

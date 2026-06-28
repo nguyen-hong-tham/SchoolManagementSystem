@@ -42,6 +42,7 @@ namespace UserService.DTOs
         public UserService.Entities.Gender Gender { get; set; }
 
         [Required(ErrorMessage = "Date of birth is required")]
+        [PastDate(ErrorMessage = "Date of Birth cannot be in the future.")]
         public DateTime DateOfBirth { get; set; }
 
         public string? PhoneNumber { get; set; } = string.Empty;
@@ -53,6 +54,7 @@ namespace UserService.DTOs
         // Teacher profile specific fields
         public string? AcademicDegree { get; set; }
         public string? Specialization { get; set; }
+        [PastDate(ErrorMessage = "Hire date cannot be in the future.")]
         public DateTime? HireDate { get; set; }
         public string? Department { get; set; }
     }

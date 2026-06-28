@@ -39,11 +39,11 @@ public class StudentClassesController : ControllerBase
 
     // 2 get : danh sách học sinh đang học trong lớp A
     [HttpGet("classes/{classId:guid}/students")]
-    public async Task<ActionResult<IEnumerable<StudentClassResponseDto>>> GetStudents(Guid classId)
+    public async Task<ActionResult<IEnumerable<StudentClassResponseDto>>> GetStudents(Guid classId, [FromQuery] bool onlyCurrent = false)
     {
         try
         {
-            var result = await _studentClassService.GetStudentsByClassIdAsync(classId);
+            var result = await _studentClassService.GetStudentsByClassIdAsync(classId, onlyCurrent);
             return Ok(result);
         }
         catch (KeyNotFoundException ex)
@@ -105,6 +105,42 @@ public class StudentClassesController : ControllerBase
             return NotFound(new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("students/{studentId:guid}/history")]
+    public async Task<ActionResult<IEnumerable<StudentClassResponseDto>>> GetStudentHistory(Guid studentId)
+    {
+        var result = await _studentClassService.GetClassHistoryAsync(studentId);
+        return Ok(result);
+    }
+
+    [HttpGet("assigned-student-ids")]
+    public async Task<ActionResult<IEnumerable<Guid>>> GetAssignedStudentIds()
+    {
+        var result = await _studentClassService.GetAssignedStudentIdsAsync();
+        return Ok(result);
+    }
+
+    [HttpPost("promote-batch")]
+    public async Task<ActionResult<IEnumerable<StudentClassResponseDto>>> PromoteBatch([FromBody] PromoteBatchDto dto)
+    {
+        try
+        {
+            var result = await _studentClassService.PromoteBatchAsync(dto);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
         {
             return BadRequest(new { message = ex.Message });
         }

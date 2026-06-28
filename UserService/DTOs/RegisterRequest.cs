@@ -39,6 +39,7 @@ namespace UserService.DTOs
         public UserService.Entities.Gender Gender { get; set; }
 
         [Required(ErrorMessage = "Date of birth is required")]
+        [PastDate(ErrorMessage = "Date of Birth cannot be in the future.")]
         public DateTime DateOfBirth { get; set; }
 
         public string PhoneNumber { get; set; } = string.Empty;

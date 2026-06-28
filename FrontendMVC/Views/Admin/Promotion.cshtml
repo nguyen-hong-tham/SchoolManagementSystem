@@ -1,0 +1,728 @@
+@{
+    ViewData["Title"] = "Quản lý Lên lớp & Tốt nghiệp";
+    Layout = "_Layout";
+    var schoolYears = ViewBag.SchoolYears as IEnumerable<string> ?? new List<string>();
+    var classes = ViewBag.Classes as IEnumerable<ClassViewModel> ?? new List<ClassViewModel>();
+}
+
+<style>
+    .promotion-grid {
+        display: grid;
+        grid-template-columns: 1fr 3fr;
+        gap: 30px;
+        align-items: start;
+    }
+    
+    .filter-panel {
+        background-color: #fff;
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+        padding: 24px;
+    }
+
+    .student-panel {
+        background-color: #fff;
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+        padding: 30px;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-header h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-text-dark);
+        margin: 0;
+    }
+
+    .badge-info-custom {
+        background-color: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .badge-success-custom {
+        background-color: #ecfdf5;
+        color: #047857;
+        border: 1px solid #a7f3d0;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    /* Checkbox styling */
+    .checkbox-cell {
+        width: 40px;
+        text-align: center;
+    }
+
+    .checkbox-cell input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--color-primary);
+    }
+
+    /* Modal styles */
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(8px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.25s ease-in-out;
+    }
+    .modal-backdrop.show {
+        opacity: 1;
+    }
+    .modal-content {
+        background-color: #ffffff;
+        border-radius: 16px;
+        box-shadow: var(--shadow-lg);
+        width: 90%;
+        max-width: 600px;
+        max-height: 85vh;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+        transform: scale(0.95);
+        transition: transform 0.25s ease-in-out;
+    }
+    .modal-backdrop.show .modal-content {
+        transform: scale(1);
+    }
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #f8fafc;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+    }
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-text-dark);
+    }
+    .modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.75rem;
+        font-weight: 500;
+        color: var(--color-text-light);
+        cursor: pointer;
+        transition: color 0.15s ease;
+        line-height: 1;
+    }
+    .modal-close-btn:hover {
+        color: var(--color-danger);
+    }
+    .modal-body {
+        padding: 24px;
+    }
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background-color: #f8fafc;
+        border-bottom-left-radius: 16px;
+        border-bottom-right-radius: 16px;
+    }
+
+    .spinner-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 0;
+        color: var(--color-text-light);
+        gap: 12px;
+    }
+    .spinner {
+        border: 4px solid rgba(79, 70, 229, 0.1);
+        border-top: 4px solid var(--color-primary);
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        animation: spin 1s linear infinite;
+    }
+    @@keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .alert-container {
+        margin-bottom: 20px;
+    }
+
+    .alert {
+        padding: 12px 16px;
+        border-radius: 10px;
+        font-weight: 500;
+        margin-bottom: 15px;
+    }
+    .alert-success {
+        background-color: #ecfdf5;
+        color: var(--color-success);
+        border: 1px solid #a7f3d0;
+    }
+    .alert-danger {
+        background-color: #fef2f2;
+        color: var(--color-danger);
+        border: 1px solid #fca5a5;
+    }
+
+    .preview-summary-box {
+        background-color: #f8fafc;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 20px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+</style>
+
+<div class="alert-container" id="pageAlertContainer"></div>
+
+<div class="promotion-grid">
+    <!-- Filters Panel -->
+    <div class="filter-panel">
+        <h4 style="font-weight: 700; margin-bottom: 20px; color: var(--color-text-dark);">Thông Tin Tiến Trình</h4>
+        
+        <div class="form-group">
+            <label class="form-label">Năm học hiện tại</label>
+            <select id="currentSchoolYear" class="form-control">
+                <option value="">-- Chọn năm học --</option>
+                @foreach (var year in schoolYears)
+                {
+                    <option value="@year">@year</option>
+                }
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Lớp học hiện tại</label>
+            <select id="currentClass" class="form-control" disabled>
+                <option value="">-- Chọn lớp học --</option>
+            </select>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 25px 0;" />
+
+        <div class="form-group">
+            <label class="form-label">Năm học đích</label>
+            <input type="text" id="targetSchoolYear" class="form-control" readonly placeholder="Tự động tính..." style="background-color: #f8fafc;" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Phân lớp học</label>
+            <select id="targetClass" class="form-control" disabled>
+                <option value="">-- Chọn lớp học --</option>
+            </select>
+        </div>
+
+        <button type="button" id="btnPreview" class="btn btn-primary" style="width: 100%; margin-top: 15px; padding: 12px;" disabled>
+            Xem trước & Tiến hành
+        </button>
+    </div>
+
+    <!-- Student Checklist Panel -->
+    <div class="student-panel">
+        <div class="section-header">
+            <h3>Danh Sách Học Sinh Có Thể Lên Lớp / Tốt Nghiệp</h3>
+            <span id="studentCountBadge" class="badge-info-custom" style="display: none;">0 học sinh</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th class="checkbox-cell">
+                            <input type="checkbox" id="selectAllCheckbox" disabled />
+                        </th>
+                        <th style="width: 80px;">STT</th>
+                        <th style="width: 180px;">Mã Học Sinh</th>
+                        <th>Họ và Tên</th>
+                        <th>Ngày Nhập Lớp</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center text-muted" style="padding: 50px 0; font-style: italic;">
+                            Vui lòng chọn Năm học và Lớp học hiện tại để tải danh sách học sinh.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Preview & Confirmation Modal -->
+<div id="previewModal" class="modal-backdrop">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Xác nhận Lên lớp / Tốt nghiệp</h3>
+            <button class="modal-close-btn" onclick="closePreviewModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <div class="preview-summary-box">
+                <div>
+                    <span class="text-muted" style="font-size: 0.85rem; display: block;">Từ Lớp Học</span>
+                    <span id="previewFromClass" class="fw-bold" style="font-size: 1.1rem; color: var(--color-text-dark);">—</span>
+                </div>
+                <div>
+                    <span class="text-muted" style="font-size: 0.85rem; display: block;">Đến Lớp / Tiến Trình</span>
+                    <span id="previewToClass" class="fw-bold" style="font-size: 1.1rem; color: var(--color-primary);">—</span>
+                </div>
+                <div>
+                    <span class="text-muted" style="font-size: 0.85rem; display: block;">Năm Học Hiện Tại</span>
+                    <span id="previewFromYear" class="fw-bold" style="font-size: 1.1rem; color: var(--color-text-dark);">—</span>
+                </div>
+                <div>
+                    <span class="text-muted" style="font-size: 0.85rem; display: block;">Năm Học Mới</span>
+                    <span id="previewToYear" class="fw-bold" style="font-size: 1.1rem; color: var(--color-primary);">—</span>
+                </div>
+            </div>
+
+            <div style="font-weight: 600; margin-bottom: 10px; color: var(--color-text-dark);">
+                Danh sách học sinh được xử lý (<span id="previewStudentCount">0</span>):
+            </div>
+            
+            <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; background-color: #f8fafc; padding: 12px;">
+                <ul id="previewStudentList" style="list-style-type: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                </ul>
+            </div>
+
+            <div style="margin-top: 20px; font-size: 0.9rem; color: var(--color-text-light); border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <p>⚠️ <strong>Lưu ý:</strong> Hành động này sẽ khóa phân lớp học hiện tại (IsCurrent = false) của các học sinh trên và chuyển/lên lớp hoặc đổi vai trò của họ sang Tốt nghiệp trong hệ thống.</p>
+            </div>
+        </div>
+        <div class="modal-footer" id="modalFooter">
+            <button type="button" class="btn btn-secondary" onclick="closePreviewModal()">Hủy</button>
+            <button type="button" id="btnConfirmPromote" class="btn btn-success" onclick="executePromotion()">Xác nhận thực hiện</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Classes data serialized from controller to enable dynamic client-side year filtering
+    const allClasses = @Html.Raw(Json.Serialize(classes)) || [];
+    let currentSelectedStudents = [];
+
+    // Helper to refresh custom searchable autocomplete select elements
+    function refreshSelect(selectElement) {
+        if (selectElement && selectElement.refreshAutocomplete) {
+            selectElement.refreshAutocomplete();
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const yearSelect = document.getElementById("currentSchoolYear");
+        const classSelect = document.getElementById("currentClass");
+        const targetClassSelect = document.getElementById("targetClass");
+        const targetYearInput = document.getElementById("targetSchoolYear");
+        const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+        const btnPreview = document.getElementById("btnPreview");
+
+        // 1. Year Change: populate and enable classes dropdown
+        yearSelect.addEventListener("change", function () {
+            const year = yearSelect.value;
+            classSelect.innerHTML = '<option value="">-- Chọn lớp học --</option>';
+            classSelect.disabled = true;
+            targetClassSelect.innerHTML = '<option value="">-- Chọn lớp học --</option>';
+            targetClassSelect.disabled = true;
+            targetYearInput.value = '';
+            btnPreview.disabled = true;
+            clearStudentTable();
+            document.getElementById("pageAlertContainer").innerHTML = '';
+
+            if (!year) {
+                refreshSelect(classSelect);
+                refreshSelect(targetClassSelect);
+                return;
+            }
+
+            const filteredClasses = allClasses.filter(c => c.schoolYear === year);
+            filteredClasses.forEach(c => {
+                const opt = document.createElement("option");
+                opt.value = c.id;
+                opt.text = `${c.name} (Khối ${c.gradeLevel})`;
+                classSelect.appendChild(opt);
+            });
+            classSelect.disabled = false;
+            refreshSelect(classSelect);
+            refreshSelect(targetClassSelect);
+        });
+
+        // 2. Class Change: fetch students and target classes
+        classSelect.addEventListener("change", async function () {
+            const classId = classSelect.value;
+            clearStudentTable();
+            targetClassSelect.innerHTML = '<option value="">-- Chọn lớp học --</option>';
+            targetClassSelect.disabled = true;
+            targetYearInput.value = '';
+            btnPreview.disabled = true;
+            document.getElementById("pageAlertContainer").innerHTML = '';
+
+            if (!classId) {
+                refreshSelect(targetClassSelect);
+                return;
+            }
+
+            // Show loading on student panel
+            showStudentTableLoading();
+
+            try {
+                // Fetch Students
+                const studentsResp = await fetch(`/Admin/GetPromotionStudentsJson?classId=${classId}`);
+                const studentsData = await studentsResp.json();
+
+                // Fetch Target Classes
+                const targetsResp = await fetch(`/Admin/GetTargetClassesJson?classId=${classId}`);
+                const targetsData = await targetsResp.json();
+
+                if (studentsData.success && targetsData.success) {
+                    populateStudentsTable(studentsData.students);
+                    
+                    if (targetsData.isGrade12) {
+                        targetYearInput.value = 'Ra trường (Tốt nghiệp)';
+                        
+                        const opt = document.createElement("option");
+                        opt.value = "GRADUATED";
+                        opt.text = "Tốt nghiệp (Học sinh ra trường)";
+                        opt.selected = true;
+                        targetClassSelect.appendChild(opt);
+                        targetClassSelect.disabled = true; // Fixed to graduation
+                        
+                        updateActionButtonsState();
+                    } else {
+                        targetYearInput.value = targetsData.targetSchoolYear;
+                        
+                        if (!targetsData.targetClasses || targetsData.targetClasses.length === 0) {
+                            showPageError(`Không tìm thấy lớp học cho năm học ${targetsData.targetSchoolYear}. Vui lòng tạo lớp học trước khi thực hiện lên lớp.`);
+                            targetClassSelect.innerHTML = '<option value="">-- Không tìm thấy lớp học --</option>';
+                            targetClassSelect.disabled = true;
+                            btnPreview.disabled = true;
+                        } else {
+                            targetClassSelect.innerHTML = '<option value="">-- Chọn phân lớp học --</option>';
+                            targetsData.targetClasses.forEach(c => {
+                                const opt = document.createElement("option");
+                                opt.value = c.id;
+                                opt.text = `${c.name} (Năm học ${c.schoolYear})`;
+                                targetClassSelect.appendChild(opt);
+                            });
+                            targetClassSelect.disabled = false;
+                        }
+                    }
+                    refreshSelect(targetClassSelect);
+                } else {
+                    showPageError(studentsData.message || targetsData.message || 'Lỗi tải dữ liệu.');
+                    refreshSelect(targetClassSelect);
+                }
+            } catch (err) {
+                showPageError('Lỗi kết nối đến máy chủ.');
+                refreshSelect(targetClassSelect);
+            }
+        });
+
+        // 3. Target Class Change
+        targetClassSelect.addEventListener("change", function () {
+            updateActionButtonsState();
+        });
+
+        // 4. Select All Checkbox
+        selectAllCheckbox.addEventListener("change", function () {
+            const checkboxes = document.querySelectorAll(".student-checkbox");
+            checkboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+            updateActionButtonsState();
+        });
+
+        // 5. Button Preview click
+        btnPreview.addEventListener("click", function () {
+            openPreviewModal();
+        });
+    });
+
+    // Helper functions
+    function clearStudentTable() {
+        const tbody = document.getElementById("studentTableBody");
+        const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+        const badge = document.getElementById("studentCountBadge");
+        
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted" style="padding: 50px 0; font-style: italic;">
+                    Vui lòng chọn Năm học và Lớp học hiện tại để tải danh sách học sinh.
+                </td>
+            </tr>
+        `;
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.disabled = true;
+        badge.style.display = 'none';
+    }
+
+    function showStudentTableLoading() {
+        const tbody = document.getElementById("studentTableBody");
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center" style="padding: 40px 0;">
+                    <div class="spinner-container" style="padding: 10px 0;">
+                        <div class="spinner" style="width: 30px; height: 30px; border-width: 3px;"></div>
+                        <div>Đang tải học sinh...</div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    function populateStudentsTable(students) {
+        const tbody = document.getElementById("studentTableBody");
+        const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+        const badge = document.getElementById("studentCountBadge");
+
+        if (!students || students.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-muted" style="padding: 40px 0;">
+                        Không tìm thấy học sinh nào đang hoạt động trong lớp học này.
+                    </td>
+                </tr>
+            `;
+            selectAllCheckbox.disabled = true;
+            badge.style.display = 'none';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        currentSelectedStudents = students;
+
+        students.forEach((s, idx) => {
+            const tr = document.createElement("tr");
+            
+            // Date formatting
+            const dateStr = s.assignedDate ? new Date(s.assignedDate).toLocaleDateString('vi-VN') : '—';
+
+            tr.innerHTML = `
+                <td class="checkbox-cell">
+                    <input type="checkbox" class="student-checkbox" data-id="${s.studentId}" data-name="${s.studentName}" data-code="${s.studentCode}" onchange="updateActionButtonsState()" />
+                </td>
+                <td>${idx + 1}</td>
+                <td class="fw-bold">${s.studentCode}</td>
+                <td>${s.studentName}</td>
+                <td>${dateStr}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.disabled = false;
+        badge.innerText = `${students.length} học sinh`;
+        badge.className = 'badge-info-custom';
+        badge.style.display = 'inline-block';
+    }
+
+    function updateActionButtonsState() {
+        const btnPreview = document.getElementById("btnPreview");
+        const targetClass = document.getElementById("targetClass").value;
+        const selectedCheckboxes = document.querySelectorAll(".student-checkbox:checked");
+        
+        btnPreview.disabled = !(targetClass && selectedCheckboxes.length > 0);
+    }
+
+    function showPageError(message) {
+        const container = document.getElementById("pageAlertContainer");
+        container.innerHTML = `
+            <div class="alert alert-danger">${message}</div>
+        `;
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function showPageSuccess(message) {
+        const container = document.getElementById("pageAlertContainer");
+        container.innerHTML = `
+            <div class="alert alert-success">${message}</div>
+        `;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Modal Control
+    function openPreviewModal() {
+        const modal = document.getElementById("previewModal");
+        const classSelect = document.getElementById("currentClass");
+        const targetClassSelect = document.getElementById("targetClass");
+        const yearSelect = document.getElementById("currentSchoolYear");
+        const targetYearInput = document.getElementById("targetSchoolYear");
+
+        const fromClass = classSelect.options[classSelect.selectedIndex].text;
+        const toClass = targetClassSelect.options[targetClassSelect.selectedIndex].text;
+        const fromYear = yearSelect.value;
+        const toYear = targetYearInput.value;
+
+        const selectedCheckboxes = document.querySelectorAll(".student-checkbox:checked");
+        
+        document.getElementById("previewFromClass").innerText = fromClass;
+        document.getElementById("previewToClass").innerText = toClass;
+        document.getElementById("previewFromYear").innerText = fromYear;
+        document.getElementById("previewToYear").innerText = toYear;
+        document.getElementById("previewStudentCount").innerText = selectedCheckboxes.length;
+
+        const listContainer = document.getElementById("previewStudentList");
+        listContainer.innerHTML = '';
+
+        selectedCheckboxes.forEach(cb => {
+            const name = cb.dataset.name;
+            const code = cb.dataset.code;
+
+            const li = document.createElement("li");
+            li.style.display = 'flex';
+            li.style.justifyContent = 'space-between';
+            li.style.padding = '8px 12px';
+            li.style.backgroundColor = '#ffffff';
+            li.style.borderRadius = '6px';
+            li.style.border = '1px solid var(--border-color)';
+            
+            li.innerHTML = `
+                <span class="fw-bold">${name}</span>
+                <span class="text-muted" style="font-size: 0.85rem;">Mã: ${code}</span>
+            `;
+            listContainer.appendChild(li);
+        });
+
+        modal.style.display = 'flex';
+        modal.offsetHeight;
+        modal.classList.add('show');
+    }
+
+    function closePreviewModal() {
+        const modal = document.getElementById("previewModal");
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 250);
+    }
+
+    // Execution
+    async function executePromotion() {
+        const targetClassVal = document.getElementById("targetClass").value;
+        const targetYearInput = document.getElementById("targetSchoolYear").value;
+        const selectedCheckboxes = document.querySelectorAll(".student-checkbox:checked");
+        const modalBody = document.getElementById("modalBody");
+        const modalFooter = document.getElementById("modalFooter");
+
+        const studentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.id);
+        const isGraduating = targetClassVal === "GRADUATED";
+
+        const payload = {
+            StudentIds: studentIds,
+            NewClassId: isGraduating ? null : targetClassVal,
+            SchoolYear: isGraduating ? "GRADUATED" : targetYearInput,
+            IsGraduating: isGraduating
+        };
+
+        // Show loading spinner in modal body and hide footer
+        modalBody.innerHTML = `
+            <div class="spinner-container">
+                <div class="spinner"></div>
+                <div style="font-weight: 500; font-size: 1.1rem; color: var(--color-text-dark);">Đang thực hiện quy trình lên lớp...</div>
+                <div class="text-muted" style="font-size: 0.85rem; text-align: center; max-width: 80%;"></div>
+            </div>
+        `;
+        modalFooter.style.display = 'none';
+
+        try {
+            const response = await fetch("/Admin/PromoteBatch", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            closePreviewModal();
+
+            // Restore Modal Content Structure for next use
+            setTimeout(() => {
+                modalBody.innerHTML = `
+                    <div class="preview-summary-box">
+                        <div>
+                            <span class="text-muted" style="font-size: 0.85rem; display: block;">Từ Lớp Học</span>
+                            <span id="previewFromClass" class="fw-bold" style="font-size: 1.1rem; color: var(--color-text-dark);">—</span>
+                        </div>
+                        <div>
+                            <span class="text-muted" style="font-size: 0.85rem; display: block;">Đến Lớp / Tiến Trình</span>
+                            <span id="previewToClass" class="fw-bold" style="font-size: 1.1rem; color: var(--color-primary);">—</span>
+                        </div>
+                        <div>
+                            <span class="text-muted" style="font-size: 0.85rem; display: block;">Năm Học Hiện Tại</span>
+                            <span id="previewFromYear" class="fw-bold" style="font-size: 1.1rem; color: var(--color-text-dark);">—</span>
+                        </div>
+                        <div>
+                            <span class="text-muted" style="font-size: 0.85rem; display: block;">Năm Học Mới</span>
+                            <span id="previewToYear" class="fw-bold" style="font-size: 1.1rem; color: var(--color-primary);">—</span>
+                        </div>
+                    </div>
+
+                    <div style="font-weight: 600; margin-bottom: 10px; color: var(--color-text-dark);">
+                        Danh sách học sinh được xử lý (<span id="previewStudentCount">0</span>):
+                    </div>
+                    
+                    <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; background-color: #f8fafc; padding: 12px;">
+                        <ul id="previewStudentList" style="list-style-type: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                        </ul>
+                    </div>
+
+                    <div style="margin-top: 20px; font-size: 0.9rem; color: var(--color-text-light); border-top: 1px solid var(--border-color); padding-top: 15px;">
+                        <p>⚠️ <strong>Lưu ý:</strong> Hành động này sẽ khóa phân lớp học hiện tại (IsCurrent = false) của các học sinh trên và chuyển/lên lớp hoặc đổi vai trò của họ sang Tốt nghiệp trong hệ thống.</p>
+                    </div>
+                `;
+                modalFooter.style.display = 'flex';
+            }, 500);
+
+            if (result.success) {
+                showPageSuccess(result.message);
+                
+                // Clear selection and re-trigger class change to refresh student list
+                const classSelect = document.getElementById("currentClass");
+                classSelect.dispatchEvent(new Event("change"));
+            } else {
+                showPageError(result.message);
+            }
+        } catch (err) {
+            closePreviewModal();
+            showPageError("Đã xảy ra lỗi kết nối hoặc xử lý lỗi từ hệ thống.");
+        }
+    }
+</script>

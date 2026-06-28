@@ -59,6 +59,11 @@ public class TeachingAssignmentRepository : ITeachingAssignmentRepository
         _context.TeachingAssignments.Update(entity);
     }
 
+    public void Delete(TeachingAssignment entity)
+    {
+        _context.TeachingAssignments.Remove(entity);
+    }
+
     public async Task SaveChangesAsync()
     {
         await _context.SaveChangesAsync();

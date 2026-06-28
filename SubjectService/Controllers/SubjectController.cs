@@ -1,14 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared.Events;
 using SubjectService.DTOs;
-using SubjectService.Entities;
-using SubjectService.Repositories;
+using SubjectService.Services;
 
 namespace SubjectService.Controllers;
 
@@ -17,13 +13,11 @@ namespace SubjectService.Controllers;
 [Authorize] // Bắt buộc đăng nhập với mọi endpoint theo mặc định
 public class SubjectController : ControllerBase
 {
-    private readonly ISubjectRepository _subjectRepository;
-    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly ISubjectService _subjectService;
 
-    public SubjectController(ISubjectRepository subjectRepository, IPublishEndpoint publishEndpoint)
+    public SubjectController(ISubjectService subjectService)
     {
-        _subjectRepository = subjectRepository;
-        _publishEndpoint = publishEndpoint;
+        _subjectService = subjectService;
     }
 
     [HttpGet] // Lấy danh sách môn học (Student, Teacher, Admin đều được gọi)
@@ -31,25 +25,7 @@ public class SubjectController : ControllerBase
         [FromQuery] int? gradeLevel
     )
     {
-        var subjects = await _subjectRepository.GetAllSubjectsAsync();
-
-        if (gradeLevel.HasValue)
-        {
-            subjects = subjects.Where(s => s.GradeLevel == gradeLevel.Value);
-        }
-
-        var response = subjects
-            .Select(s => new SubjectResponse
-            {
-                Id = s.Id,
-                Code = s.Code,
-                Name = s.Name,
-                Description = s.Description,
-                GradeLevel = s.GradeLevel,
-                CreatedAt = s.CreatedAt,
-            })
-            .ToList();
-
+        var response = await _subjectService.GetAllSubjectsAsync(gradeLevel);
         return Ok(response);
     }
 
@@ -57,23 +33,15 @@ public class SubjectController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<SubjectResponse>> GetSubject(Guid id)
     {
-        var subject = await _subjectRepository.GetSubjectByIdAsync(id);
-        if (subject == null)
+        try
         {
-            return NotFound(new { message = $"Không tìm thấy môn học với Id: {id}" });
+            var response = await _subjectService.GetSubjectByIdAsync(id);
+            return Ok(response);
         }
-
-        var response = new SubjectResponse
+        catch (KeyNotFoundException ex)
         {
-            Id = subject.Id,
-            Code = subject.Code,
-            Name = subject.Name,
-            Description = subject.Description,
-            GradeLevel = subject.GradeLevel,
-            CreatedAt = subject.CreatedAt,
-        };
-
-        return Ok(response);
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     // Tạo môn học mới (Chỉ Admin mới có quyền)
@@ -83,48 +51,15 @@ public class SubjectController : ControllerBase
         [FromBody] CreateSubjectRequest request
     )
     {
-        // Kiểm tra xem môn học đã tồn tại chưa
-        var exists = await _subjectRepository.GetSubjectByCodeAsync(request.Code);
-        if (exists != null)
+        try
         {
-            return BadRequest(new { message = "Môn học đã tồn tại" });
+            var response = await _subjectService.CreateSubjectAsync(request);
+            return CreatedAtAction(nameof(GetSubject), new { id = response.Id }, response);
         }
-
-        var subject = new Subject
+        catch (InvalidOperationException ex)
         {
-            Id = Guid.NewGuid(),
-            Code = request.Code.ToUpper(),
-            Name = request.Name,
-            Description = request.Description,
-            GradeLevel = request.GradeLevel,
-            CreatedAt = DateTime.UtcNow,
-        };
-
-        await _subjectRepository.CreateSubjectAsync(subject);
-        await _subjectRepository.SaveChangesAsync();
-
-        // Publish event to RabbitMQ
-        await _publishEndpoint.Publish<SubjectCreatedEvent>(
-            new
-            {
-                Id = subject.Id,
-                Code = subject.Code,
-                Name = subject.Name,
-                GradeLevel = subject.GradeLevel,
-            }
-        );
-
-        var response = new SubjectResponse
-        {
-            Id = subject.Id,
-            Code = subject.Code,
-            Name = subject.Name,
-            Description = subject.Description,
-            GradeLevel = subject.GradeLevel,
-            CreatedAt = subject.CreatedAt,
-        };
-
-        return CreatedAtAction(nameof(GetSubject), new { id = subject.Id }, response);
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     // Cập nhật thông tin môn học (Chỉ Admin mới có quyền)
@@ -132,41 +67,15 @@ public class SubjectController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSubjectRequest request)
     {
-        var subject = await _subjectRepository.GetSubjectByIdAsync(id);
-        if (subject == null)
+        try
         {
-            return NotFound(new { message = $"Không tìm thấy môn học với Id: {id}" });
+            var response = await _subjectService.UpdateSubjectAsync(id, request);
+            return Ok(response);
         }
-
-        subject.Name = request.Name;
-        subject.Description = request.Description;
-        subject.GradeLevel = request.GradeLevel;
-
-        await _subjectRepository.UpdateSubjectAsync(subject);
-        await _subjectRepository.SaveChangesAsync();
-
-        // Publish event to RabbitMQ
-        await _publishEndpoint.Publish<SubjectUpdatedEvent>(
-            new
-            {
-                Id = subject.Id,
-                Code = subject.Code,
-                Name = subject.Name,
-                GradeLevel = subject.GradeLevel,
-            }
-        );
-
-        return Ok(
-            new SubjectResponse
-            {
-                Id = subject.Id,
-                Code = subject.Code,
-                Name = subject.Name,
-                Description = subject.Description,
-                GradeLevel = subject.GradeLevel,
-                CreatedAt = subject.CreatedAt,
-            }
-        );
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     // Xóa môn học (Chỉ Admin mới có quyền)
@@ -174,18 +83,14 @@ public class SubjectController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var subject = await _subjectRepository.GetSubjectByIdAsync(id);
-        if (subject == null)
+        try
         {
-            return NotFound(new { message = $"Không tìm thấy môn học với Id: {id}" });
+            await _subjectService.DeleteSubjectAsync(id);
+            return Ok(new { message = "Xóa môn học thành công" });
         }
-
-        await _subjectRepository.DeleteSubjectAsync(id);
-        await _subjectRepository.SaveChangesAsync();
-
-        // Publish event to RabbitMQ
-        await _publishEndpoint.Publish<SubjectDeletedEvent>(new { Id = id });
-
-        return Ok(new { message = "Xóa môn học thành công" });
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 }

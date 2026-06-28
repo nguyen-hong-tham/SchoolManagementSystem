@@ -19,6 +19,8 @@ public interface ITeachingAssignmentService
     );
     Task<IEnumerable<TeachingAssignmentResponseDto>> GetTeacherClassesAsync(
         Guid teacherId,
-        string schoolYear
+        string? schoolYear
     );
+    Task<IEnumerable<TeachingAssignmentResponseDto>> GetAllAssignmentsAsync(string? schoolYear);
+    Task<bool> RemoveAssignmentAsync(Guid classId, Guid subjectId);
 }

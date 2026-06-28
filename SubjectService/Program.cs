@@ -7,16 +7,21 @@ using Scalar.AspNetCore;
 using SubjectService.Data;
 using SubjectService.Middleware;
 using SubjectService.Repositories;
+using SubjectService.Services;
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Cấu hình kết nối PostgreSQL
 builder.Services.AddDbContext<SubjectDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+});
 
-// 2. Đăng ký Repository Pattern
+// 2. Đăng ký Repository & Service Pattern
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
+builder.Services.AddScoped<ISubjectService, SubjectService.Services.SubjectService>();
 
 // 2.1 Cấu hình MassTransit RabbitMQ
 builder.Services.AddMassTransit(x =>

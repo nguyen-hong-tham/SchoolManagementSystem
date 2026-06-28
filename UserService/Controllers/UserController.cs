@@ -73,7 +73,10 @@ public class UserController : ControllerBase
             System.Security.Claims.ClaimTypes.NameIdentifier
         )?.Value;
 
-        if (string.IsNullOrEmpty(currentUserIdClaim) || !Guid.TryParse(currentUserIdClaim, out var userId))
+        if (
+            string.IsNullOrEmpty(currentUserIdClaim)
+            || !Guid.TryParse(currentUserIdClaim, out var userId)
+        )
         {
             return Unauthorized("User is not authenticated properly.");
         }
@@ -93,9 +96,7 @@ public class UserController : ControllerBase
     [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> ResetPassword(Guid id, [FromBody] ResetPasswordDto request)
     {
-        var currentUserRoleClaim = User.FindFirst(
-            System.Security.Claims.ClaimTypes.Role
-        )?.Value;
+        var currentUserRoleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
 
         if (string.IsNullOrEmpty(currentUserRoleClaim))
         {
@@ -120,4 +121,39 @@ public class UserController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpPost("internal/sync-class")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SyncClassInternal([FromBody] SyncClassRequestDto request)
+    {
+        Console.WriteLine(
+            $"[HTTP Sync Received] Syncing StudentId={request.StudentId}, NewClassId={request.NewClassId}, Status={request.StudentStatus}..."
+        );
+        try
+        {
+            await _authService.SyncClassAsync(
+                request.StudentId,
+                request.NewClassId,
+                request.StudentStatus
+            );
+            Console.WriteLine(
+                $"[HTTP Sync Success] StudentId={request.StudentId} successfully saved to user_db."
+            );
+            return Ok(new { message = "Class synced successfully" });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"[HTTP Sync Error] Failed to process sync for StudentId={request.StudentId}: {ex.Message}"
+            );
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+}
+
+public class SyncClassRequestDto
+{
+    public Guid StudentId { get; set; }
+    public Guid? NewClassId { get; set; }
+    public string? StudentStatus { get; set; }
 }

@@ -1,0 +1,239 @@
+@using FrontendMVC.Models
+@{
+    var profile = ViewBag.Profile as UserViewModel;
+    var academicYears = ViewBag.AcademicYears as List<StudentAcademicYearViewModel> ?? new List<StudentAcademicYearViewModel>();
+    ViewData["Title"] = "Cổng Thông Tin Học Sinh";
+    Layout = "_Layout";
+}
+
+<div style="display: grid; grid-template-columns: 280px 1fr; gap: 30px; align-items: start;">
+    
+    <!-- Profile Info Card (Fixed on the Left) -->
+    <div class="custom-card" style="margin-bottom: 0; position: sticky; top: 20px;">
+        <div class="text-center" style="margin-bottom: 25px;">
+            <div class="avatar-placeholder" style="width: 80px; height: 80px; font-size: 2.2rem; background-color: #e0e7ff; color: var(--color-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; font-weight: 700;">
+                @(string.IsNullOrEmpty(profile?.FullName) ? "S" : profile.FullName[0].ToString().ToUpper())
+            </div>
+            <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-dark);">@profile?.FullName</h3>
+            <span class="badge badge-success" style="margin-top: 5px;">Học Sinh</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.95rem; border-top: 1px solid var(--border-color); padding-top: 20px;">
+            <div>
+                <span class="text-muted">Mã số học sinh:</span>
+                <div class="fw-bold" style="margin-top: 2px;">@profile?.UserCode</div>
+            </div>
+            <div>
+                <span class="text-muted">Lớp học hiện tại:</span>
+                <div class="fw-bold" style="margin-top: 2px; color: var(--color-primary);">
+                    @(academicYears.FirstOrDefault(y => y.IsCurrent)?.ClassName ?? "Chưa được phân lớp")
+                </div>
+            </div>
+            <div>
+                <span class="text-muted">Email liên hệ:</span>
+                <div class="fw-bold" style="margin-top: 2px;">@profile?.Email</div>
+            </div>
+            <div>
+                <span class="text-muted">Số điện thoại:</span>
+                <div class="fw-bold" style="margin-top: 2px;">@profile?.PhoneNumber</div>
+            </div>
+            <div>
+                <span class="text-muted">Địa chỉ thường trú:</span>
+                <div class="fw-bold" style="margin-top: 2px;">@profile?.Address</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Academic History Tabs (On the Right) -->
+    <div>
+        @if (!academicYears.Any())
+        {
+            <div class="custom-card text-center text-muted" style="padding: 40px 0;">
+                Bạn chưa được phân vào lớp học nào. Vui lòng liên hệ Admin.
+            </div>
+        }
+        else
+        {
+            <!-- Tab Headers -->
+            <div class="custom-card" style="padding: 10px 20px; margin-bottom: 20px;">
+                <div style="display: flex; gap: 15px; overflow-x: auto; scrollbar-width: none;">
+                    @for (int i = 0; i < academicYears.Count; i++)
+                    {
+                        var year = academicYears[i];
+                        <button class="tab-btn @(i == academicYears.Count - 1 ? "active" : "")" 
+                                onclick="switchTab(event, 'tab-@i')"
+                                style="padding: 12px 20px; font-family: var(--font-primary); font-size: 0.95rem; font-weight: 600; border: none; background: none; border-bottom: 3px solid transparent; color: var(--color-text-light); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+                            Lớp @year.ClassName (@year.SchoolYear)
+                            @if (year.IsCurrent)
+                            {
+                                <span class="badge badge-success" style="font-size: 0.7rem; padding: 2px 6px;">Hiện tại</span>
+                            }
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Tab Contents -->
+            @for (int i = 0; i < academicYears.Count; i++)
+            {
+                var year = academicYears[i];
+                var scoresBySubject = year.Scores.GroupBy(s => s.SubjectName);
+
+                <div id="tab-@i" class="tab-content" style="display: @(i == academicYears.Count - 1 ? "block" : "none");">
+                    
+                    <!-- Scores Card -->
+                    <div class="custom-card" style="margin-bottom: 25px;">
+                        <div class="card-header-flex">
+                            <h3>Bảng Điểm Học Tập - Lớp @year.ClassName</h3>
+                            <span class="badge badge-primary">Năm học @year.SchoolYear</span>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Môn Học</th>
+                                        <th>Điểm Miệng</th>
+                                        <th>Điểm 15 Phút</th>
+                                        <th>Điểm 1 Tiết</th>
+                                        <th>Điểm Giữa Kỳ</th>
+                                        <th>Điểm Cuối Kỳ</th>
+                                        <th>Trung Bình Môn (TBM)*</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (!scoresBySubject.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted" style="padding: 40px 0;">Không có dữ liệu điểm học tập cho năm học này.</td>
+                                        </tr>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var group in scoresBySubject)
+                                        {
+                                            var list = group.ToList();
+                                            var oral = list.FirstOrDefault(s => s.Type == "Oral")?.ScoreValue;
+                                            var fifteen = list.FirstOrDefault(s => s.Type == "FifteenMinutes")?.ScoreValue;
+                                            var period = list.FirstOrDefault(s => s.Type == "OnePeriod")?.ScoreValue;
+                                            var midterm = list.FirstOrDefault(s => s.Type == "MidTerm")?.ScoreValue;
+                                            var final = list.FirstOrDefault(s => s.Type == "Final")?.ScoreValue;
+
+                                            decimal? tbm = null;
+                                            // Tính TBM dựa trên hệ số của các đầu điểm có mặt
+                                            decimal totalWeight = 0;
+                                            decimal weightedSum = 0;
+
+                                            if (oral.HasValue) { weightedSum += oral.Value * 1; totalWeight += 1; }
+                                            if (fifteen.HasValue) { weightedSum += fifteen.Value * 1; totalWeight += 1; }
+                                            if (period.HasValue) { weightedSum += period.Value * 2; totalWeight += 2; }
+                                            if (midterm.HasValue) { weightedSum += midterm.Value * 2; totalWeight += 2; }
+                                            if (final.HasValue) { weightedSum += final.Value * 3; totalWeight += 3; }
+
+                                            if (totalWeight > 0)
+                                            {
+                                                tbm = Math.Round(weightedSum / totalWeight, 1);
+                                            }
+
+                                            <tr>
+                                                <td class="fw-bold">@group.Key</td>
+                                                <td>@(oral.HasValue ? oral.Value.ToString("0.0") : "-")</td>
+                                                <td>@(fifteen.HasValue ? fifteen.Value.ToString("0.0") : "-")</td>
+                                                <td>@(period.HasValue ? period.Value.ToString("0.0") : "-")</td>
+                                                <td>@(midterm.HasValue ? midterm.Value.ToString("0.0") : "-")</td>
+                                                <td>@(final.HasValue ? final.Value.ToString("0.0") : "-")</td>
+                                                <td class="fw-bold" style="color: @(tbm >= 8.0m ? "var(--color-success)" : (tbm >= 5.0m ? "var(--color-primary)" : "var(--color-danger)"));">
+                                                    @(tbm.HasValue ? tbm.Value.ToString("0.0") : "-")
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-muted" style="font-size: 0.8rem; margin-top: 15px;">* Công thức tính TBM = (Miệng*1 + 15p*1 + 1Tiết*2 + GiữaKỳ*2 + CuốiKỳ*3) / Tổng hệ số.</p>
+                    </div>
+
+                    <!-- Schedule Card -->
+                    <div class="custom-card">
+                        <div class="card-header-flex">
+                            <h3>Thời Khóa Biểu - Lớp @year.ClassName</h3>
+                        </div>
+
+                        @if (year.Schedules == null || !year.Schedules.Any())
+                        {
+                            <div class="text-center text-muted" style="padding: 20px 0;">Thời khóa biểu chưa được sắp lịch cho năm học này.</div>
+                        }
+                        else
+                        {
+                            <div class="schedule-grid">
+                                <div class="schedule-header">Tiết</div>
+                                <div class="schedule-header">Thứ Hai</div>
+                                <div class="schedule-header">Thứ Ba</div>
+                                <div class="schedule-header">Thứ Tư</div>
+                                <div class="schedule-header">Thứ Năm</div>
+                                <div class="schedule-header">Thứ Sáu</div>
+
+                                @for (int period = 1; period <= 5; period++)
+                                {
+                                    <div class="schedule-row">
+                                        <div class="schedule-cell period-header">Tiết @period</div>
+                                        @for (int day = 2; day <= 6; day++)
+                                        {
+                                            var item = year.Schedules?.FirstOrDefault(s => s.DayOfWeek == day && s.Period == period);
+                                            <div class="schedule-cell">
+                                                @if (item != null)
+                                                {
+                                                    <div class="schedule-item">
+                                                        <div class="sub">@item.SubjectName</div>
+                                                        <div class="teacher">GV: @item.TeacherName</div>
+                                                        <div class="room"> @item.Room</div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                </div>
+            }
+        }
+    </div>
+
+</div>
+
+<style>
+    .tab-btn {
+        position: relative;
+    }
+    .tab-btn:hover {
+        color: var(--color-primary) !important;
+    }
+    .tab-btn.active {
+        color: var(--color-primary) !important;
+        border-bottom-color: var(--color-primary) !important;
+    }
+</style>
+
+<script>
+    function switchTab(evt, tabId) {
+        // Hide all tab contents
+        const tabContents = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < tabContents.length; i++) {
+            tabContents[i].style.display = "none";
+        }
+
+        // Deactivate all tab buttons
+        const tabBtns = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < tabBtns.length; i++) {
+            tabBtns[i].classList.remove("active");
+        }
+
+        // Show the selected tab content and set active class
+        document.getElementById(tabId).style.display = "block";
+        evt.currentTarget.classList.add("active");
+    }
+</script>

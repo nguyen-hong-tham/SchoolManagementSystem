@@ -10,6 +10,8 @@ public class Class
 
     public string SchoolYear { get; set; } = string.Empty;
 
+    public int Capacity { get; set; } = 40;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;

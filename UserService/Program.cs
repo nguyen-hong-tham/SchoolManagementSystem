@@ -5,15 +5,20 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using UserService.Data;
+using UserService.Consumers;
 using UserService.Middleware;
 using UserService.Repositories;
 using UserService.Services;
+
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddMassTransit(x =>
 {
+    x.AddConsumer<StudentPromotedConsumer>();
+
     x.UsingRabbitMq(
         (context, cfg) =>
         {
@@ -24,6 +29,15 @@ builder.Services.AddMassTransit(x =>
                 {
                     h.Username(builder.Configuration["MessageBroker:Username"] ?? "guest");
                     h.Password(builder.Configuration["MessageBroker:Password"] ?? "guest");
+                }
+            );
+
+            cfg.ReceiveEndpoint(
+                "user-service-student-events",
+                e =>
+                {
+                    e.UseMessageRetry(r => r.Interval(3, System.TimeSpan.FromSeconds(5)));
+                    e.ConfigureConsumer<StudentPromotedConsumer>(context);
                 }
             );
         }
@@ -51,8 +65,14 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.ConfigureWarnings(w =>
+        w.Ignore(
+            Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning
+        )
+    );
+});
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();

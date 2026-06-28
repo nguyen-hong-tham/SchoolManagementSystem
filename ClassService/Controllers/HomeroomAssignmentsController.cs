@@ -73,4 +73,12 @@ public class HomeroomAssignmentsController : ControllerBase
         }
         return Ok(result);
     }
+
+    [HttpGet("homerooms")]
+    public async Task<ActionResult<IEnumerable<HomeroomAssignmentResponseDto>>> GetAllHomerooms([FromQuery] string? schoolYear)
+    {
+        var result = await _homeroomService.GetAllHomeroomsAsync(schoolYear);
+        return Ok(result);
+    }
 }
+

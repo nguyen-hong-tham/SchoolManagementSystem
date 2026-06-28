@@ -49,7 +49,8 @@ public class AuthService : IAuthService
             DateOfBirth = request.DateOfBirth,
             PhoneNumber = request.PhoneNumber,
             Address = request.Address ?? string.Empty,
-            ClassId = request.ClassId,
+            ClassId = null, // StudentClass is single source of truth
+            StudentStatus = StudentStatus.Active
         };
         await _userRepository.CreateAsync(user);
 
@@ -60,17 +61,29 @@ public class AuthService : IAuthService
             UserCode = user.UserCode,
             FullName = user.FullName,
             Role = user.Role.ToString(),
+            ClassId = user.ClassId,
+            StudentStatus = user.StudentStatus?.ToString(),
         };
-        await _publishEndpoint.Publish(userCreatedEvent);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _publishEndpoint.Publish(userCreatedEvent);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RabbitMQ Publish Info] Failed to publish UserCreatedEvent in background: {ex.Message}");
+            }
+        });
         return user;
     }
 
     public async Task<LoginResponse> LoginAsync(LoginRequest request)
     {
-        var user = await _userRepository.GetByEmailAsync(request.Email);
+        var user = await _userRepository.GetByUsernameOrEmailAsync(request.UsernameOrEmail);
         if (user == null)
         {
-            throw new Exception("Email không tồn tại");
+            throw new Exception("Tài khoản hoặc email không tồn tại");
         }
         bool isValidPassword = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
         if (!isValidPassword)
@@ -78,7 +91,7 @@ public class AuthService : IAuthService
             throw new Exception("Mật khẩu không đúng");
         }
         var token = _jwtService.GenerateToken(user);
-        return new LoginResponse { Token = token };
+        return new LoginResponse { Token = token, User = user };
     }
 
     public async Task UpdateRole(Guid userId, UpdateRoleRequest request)
@@ -95,16 +108,28 @@ public class AuthService : IAuthService
         user.Role = newRole;
         await _userRepository.UpdateAsync(user);
 
-        // Publish event
-        await _publishEndpoint.Publish(
-            new UserUpdatedEvent
+        // Publish event in background
+        _ = Task.Run(async () =>
+        {
+            try
             {
-                Id = user.Id,
-                UserCode = user.UserCode,
-                FullName = user.FullName,
-                Role = user.Role.ToString(),
+                await _publishEndpoint.Publish(
+                    new UserUpdatedEvent
+                    {
+                        Id = user.Id,
+                        UserCode = user.UserCode,
+                        FullName = user.FullName,
+                        Role = user.Role.ToString(),
+                        ClassId = user.ClassId,
+                        StudentStatus = user.StudentStatus?.ToString(),
+                    }
+                );
             }
-        );
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RabbitMQ Publish Info] Failed to publish UserUpdatedEvent in background: {ex.Message}");
+            }
+        });
     }
 
     public async Task<List<User>> GetUsers()
@@ -147,17 +172,13 @@ public class AuthService : IAuthService
         user.DateOfBirth = request.DateOfBirth;
         user.PhoneNumber = request.PhoneNumber;
         user.Address = request.Address ?? string.Empty;
-        user.ClassId = request.ClassId;
+        // user.ClassId = request.ClassId; // ClassId write removed from UserService to prevent out-of-sync writes
 
         if (user.Role == UserRole.Teacher)
         {
             if (user.TeacherProfile == null)
             {
-                user.TeacherProfile = new TeacherProfile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = user.Id
-                };
+                user.TeacherProfile = new TeacherProfile { Id = Guid.NewGuid(), UserId = user.Id };
             }
             user.TeacherProfile.AcademicDegree = request.AcademicDegree ?? string.Empty;
             user.TeacherProfile.Specialization = request.Specialization ?? string.Empty;
@@ -167,16 +188,28 @@ public class AuthService : IAuthService
 
         var updatedUser = await _userRepository.UpdateAsync(user);
 
-        // Publish event
-        await _publishEndpoint.Publish(
-            new UserUpdatedEvent
+        // Publish event in background
+        _ = Task.Run(async () =>
+        {
+            try
             {
-                Id = updatedUser.Id,
-                UserCode = updatedUser.UserCode,
-                FullName = updatedUser.FullName,
-                Role = updatedUser.Role.ToString(),
+                await _publishEndpoint.Publish(
+                    new UserUpdatedEvent
+                    {
+                        Id = updatedUser.Id,
+                        UserCode = updatedUser.UserCode,
+                        FullName = updatedUser.FullName,
+                        Role = updatedUser.Role.ToString(),
+                        ClassId = updatedUser.ClassId,
+                        StudentStatus = updatedUser.StudentStatus?.ToString(),
+                    }
+                );
             }
-        );
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RabbitMQ Publish Info] Failed to publish UserUpdatedEvent in background: {ex.Message}");
+            }
+        });
 
         return updatedUser;
     }
@@ -190,8 +223,18 @@ public class AuthService : IAuthService
         }
         await _userRepository.DeleteAsync(user);
 
-        // Publish event
-        await _publishEndpoint.Publish(new UserDeletedEvent { Id = id });
+        // Publish event in background
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _publishEndpoint.Publish(new UserDeletedEvent { Id = id });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RabbitMQ Publish Info] Failed to publish UserDeletedEvent in background: {ex.Message}");
+            }
+        });
     }
 
     public async Task<User?> GetStudent(Guid id)
@@ -235,8 +278,18 @@ public class AuthService : IAuthService
         }
         await _userRepository.DeleteAsync(user);
 
-        // Publish event
-        await _publishEndpoint.Publish(new UserDeletedEvent { Id = id });
+        // Publish event in background
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _publishEndpoint.Publish(new UserDeletedEvent { Id = id });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RabbitMQ Publish Info] Failed to publish UserDeletedEvent in background: {ex.Message}");
+            }
+        });
     }
 
     public async Task DeleteTeacher(Guid id)
@@ -248,8 +301,18 @@ public class AuthService : IAuthService
         }
         await _userRepository.DeleteAsync(user);
 
-        // Publish event
-        await _publishEndpoint.Publish(new UserDeletedEvent { Id = id });
+        // Publish event in background
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _publishEndpoint.Publish(new UserDeletedEvent { Id = id });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RabbitMQ Publish Info] Failed to publish UserDeletedEvent in background: {ex.Message}");
+            }
+        });
     }
 
     // phát sự kiện khi admin tạo user mới
@@ -279,7 +342,8 @@ public class AuthService : IAuthService
             DateOfBirth = request.DateOfBirth,
             PhoneNumber = request.PhoneNumber ?? string.Empty,
             Address = request.Address ?? string.Empty,
-            ClassId = request.ClassId,
+            ClassId = null, // StudentClass is single source of truth
+            StudentStatus = parsedRole == UserRole.Student ? StudentStatus.Active : null
         };
 
         if (parsedRole == UserRole.Teacher)
@@ -297,16 +361,28 @@ public class AuthService : IAuthService
 
         var createdUser = await _userRepository.CreateAsync(user);
 
-        // Publish event
-        await _publishEndpoint.Publish(
-            new UserCreatedEvent
+        // Publish event in background
+        _ = Task.Run(async () =>
+        {
+            try
             {
-                Id = createdUser.Id,
-                UserCode = createdUser.UserCode,
-                FullName = createdUser.FullName,
-                Role = createdUser.Role.ToString(),
+                await _publishEndpoint.Publish(
+                    new UserCreatedEvent
+                    {
+                        Id = createdUser.Id,
+                        UserCode = createdUser.UserCode,
+                        FullName = createdUser.FullName,
+                        Role = createdUser.Role.ToString(),
+                        ClassId = createdUser.ClassId,
+                        StudentStatus = createdUser.StudentStatus?.ToString(),
+                    }
+                );
             }
-        );
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RabbitMQ Publish Info] Failed to publish UserCreatedEvent in background: {ex.Message}");
+            }
+        });
 
         return createdUser;
     }
@@ -342,7 +418,9 @@ public class AuthService : IAuthService
         // - Teacher: Chỉ được phép reset mật khẩu của học sinh (Role == Student).
         if (actorRole == "Teacher" && targetUser.Role != UserRole.Student)
         {
-            throw new UnauthorizedAccessException("Giáo viên chỉ được phép đổi mật khẩu của Học sinh.");
+            throw new UnauthorizedAccessException(
+                "Giáo viên chỉ được phép đổi mật khẩu của Học sinh."
+            );
         }
 
         if (actorRole != "Admin" && actorRole != "Teacher")
@@ -352,5 +430,22 @@ public class AuthService : IAuthService
 
         targetUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
         await _userRepository.UpdateAsync(targetUser);
+    }
+
+    public async Task SyncClassAsync(Guid studentId, Guid? newClassId, string? status)
+    {
+        var user = await _userRepository.GetByIdAsync(studentId);
+        if (user != null)
+        {
+            user.ClassId = newClassId;
+            if (!string.IsNullOrEmpty(status))
+            {
+                if (Enum.TryParse<StudentStatus>(status, out var parsedStatus))
+                {
+                    user.StudentStatus = parsedStatus;
+                }
+            }
+            await _userRepository.UpdateAsync(user);
+        }
     }
 }

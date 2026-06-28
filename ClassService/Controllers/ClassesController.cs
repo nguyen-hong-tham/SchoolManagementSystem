@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ClassService.Services.Interfaces;
 using ClassService.DTOs.Classes;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClassService.Controllers;
 
@@ -15,11 +16,13 @@ public class ClassesController : ControllerBase
         _classService = classService;
     }
 
+
+
     [HttpPost]
     public async Task<ActionResult<ClassResponseDto>> CreateAsync(CreateClassDto request)
     {
         var classes = await _classService.CreateAsync(request);
-        return CreatedAtAction(nameof(GetByIdAsync), new { id = classes.Id }, classes);
+        return CreatedAtAction("GetById", new { id = classes.Id }, classes);
     }
 
     [HttpGet("{id}")]

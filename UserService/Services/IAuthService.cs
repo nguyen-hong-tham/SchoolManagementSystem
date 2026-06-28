@@ -39,4 +39,6 @@ public interface IAuthService
     Task ChangePasswordAsync(Guid id, ChangePasswordDto dto);
 
     Task ResetPasswordAsync(Guid targetUserId, ResetPasswordDto dto, string actorRole);
+
+    Task SyncClassAsync(Guid studentId, Guid? newClassId, string? status);
 }

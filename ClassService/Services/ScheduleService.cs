@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ClassService.Data;
 using ClassService.DTOs.Schedules;
 using ClassService.Entities;
 using ClassService.Repositories.Interfaces;
 using ClassService.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClassService.Services;
 
@@ -13,13 +15,16 @@ public class ScheduleService : IScheduleService
 {
     private readonly IScheduleRepository _scheduleRepository;
     private readonly IClassRepository _classRepository;
+    private readonly ApplicationDbContext _dbContext;
 
     public ScheduleService(
         IScheduleRepository scheduleRepository,
-        IClassRepository classRepository)
+        IClassRepository classRepository,
+        ApplicationDbContext dbContext)
     {
         _scheduleRepository = scheduleRepository;
         _classRepository = classRepository;
+        _dbContext = dbContext;
     }
 
     public async Task<ScheduleResponseDto> CreateScheduleAsync(CreateScheduleDto dto)
@@ -69,10 +74,10 @@ public class ScheduleService : IScheduleService
         await _scheduleRepository.AddAsync(entity);
         await _scheduleRepository.SaveChangesAsync();
 
-        return MapToResponseDto(entity);
+        return await MapToResponseDtoAsync(entity);
     }
 
-    public async Task<IEnumerable<ScheduleResponseDto>> GetClassScheduleAsync(Guid classId, string schoolYear)
+    public async Task<IEnumerable<ScheduleResponseDto>> GetClassScheduleAsync(Guid classId, string? schoolYear)
     {
         var targetClass = await _classRepository.GetByIdAsync(classId);
         if (targetClass == null)
@@ -80,18 +85,75 @@ public class ScheduleService : IScheduleService
             throw new KeyNotFoundException($"Không tìm thấy lớp học với ID: {classId}");
         }
 
+        if (string.IsNullOrEmpty(schoolYear))
+        {
+            schoolYear = targetClass.SchoolYear;
+        }
+
         var schedules = await _scheduleRepository.GetScheduleByClassAsync(classId, schoolYear);
-        return schedules.Select(MapToResponseDto);
+        
+        var teacherIds = schedules.Select(s => s.TeacherId).Distinct().ToList();
+        var teachers = await _dbContext.CachedUsers.Where(u => teacherIds.Contains(u.Id)).ToListAsync();
+
+        var subjectIds = schedules.Select(s => s.SubjectId).Distinct().ToList();
+        var subjects = await _dbContext.CachedSubjects.Where(s => subjectIds.Contains(s.Id)).ToListAsync();
+
+        return schedules.Select(entity => {
+            var teacher = teachers.FirstOrDefault(t => t.Id == entity.TeacherId);
+            var subject = subjects.FirstOrDefault(s => s.Id == entity.SubjectId);
+            return new ScheduleResponseDto
+            {
+                Id = entity.Id,
+                ClassId = entity.ClassId,
+                SubjectId = entity.SubjectId,
+                TeacherId = entity.TeacherId,
+                DayOfWeek = entity.DayOfWeek,
+                Period = entity.Period,
+                Room = entity.Room,
+                SchoolYear = entity.SchoolYear,
+                TeacherName = teacher?.FullName ?? string.Empty,
+                SubjectName = subject?.Name ?? string.Empty
+            };
+        }).ToList();
     }
 
-    public async Task<IEnumerable<ScheduleResponseDto>> GetTeacherScheduleAsync(Guid teacherId, string schoolYear)
+    public async Task<IEnumerable<ScheduleResponseDto>> GetTeacherScheduleAsync(Guid teacherId, string? schoolYear)
     {
+        if (string.IsNullOrEmpty(schoolYear))
+        {
+            schoolYear = "2025-2026";
+        }
+
         var schedules = await _scheduleRepository.GetScheduleByTeacherAsync(teacherId, schoolYear);
-        return schedules.Select(MapToResponseDto);
+        
+        var teacher = await _dbContext.CachedUsers.FirstOrDefaultAsync(u => u.Id == teacherId);
+
+        var subjectIds = schedules.Select(s => s.SubjectId).Distinct().ToList();
+        var subjects = await _dbContext.CachedSubjects.Where(s => subjectIds.Contains(s.Id)).ToListAsync();
+
+        return schedules.Select(entity => {
+            var subject = subjects.FirstOrDefault(s => s.Id == entity.SubjectId);
+            return new ScheduleResponseDto
+            {
+                Id = entity.Id,
+                ClassId = entity.ClassId,
+                SubjectId = entity.SubjectId,
+                TeacherId = entity.TeacherId,
+                DayOfWeek = entity.DayOfWeek,
+                Period = entity.Period,
+                Room = entity.Room,
+                SchoolYear = entity.SchoolYear,
+                TeacherName = teacher?.FullName ?? string.Empty,
+                SubjectName = subject?.Name ?? string.Empty
+            };
+        }).ToList();
     }
 
-    private static ScheduleResponseDto MapToResponseDto(Schedule entity)
+    private async Task<ScheduleResponseDto> MapToResponseDtoAsync(Schedule entity)
     {
+        var teacher = await _dbContext.CachedUsers.FirstOrDefaultAsync(u => u.Id == entity.TeacherId);
+        var subject = await _dbContext.CachedSubjects.FirstOrDefaultAsync(s => s.Id == entity.SubjectId);
+
         return new ScheduleResponseDto
         {
             Id = entity.Id,
@@ -101,7 +163,9 @@ public class ScheduleService : IScheduleService
             DayOfWeek = entity.DayOfWeek,
             Period = entity.Period,
             Room = entity.Room,
-            SchoolYear = entity.SchoolYear
+            SchoolYear = entity.SchoolYear,
+            TeacherName = teacher?.FullName ?? string.Empty,
+            SubjectName = subject?.Name ?? string.Empty
         };
     }
 }

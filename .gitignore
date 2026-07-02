@@ -1,0 +1,28 @@
+# Avoid tracking environment files containing passwords
+.env
+.env.production
+.env.local
+
+# .NET / C# build outputs
+[Db]bin/
+[Db]obj/
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio / VS Code temp files
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.DS_Store
+
+# Docker temporary logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.dockerignore

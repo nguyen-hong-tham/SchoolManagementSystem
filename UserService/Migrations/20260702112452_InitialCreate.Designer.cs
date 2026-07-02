@@ -12,14 +12,15 @@ using UserService.Data;
 namespace UserService.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260615130621_AddAddressToUser")]
-    partial class AddAddressToUser
+    [Migration("20260702112452_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("users")
                 .HasAnnotation("ProductVersion", "9.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -40,7 +41,7 @@ namespace UserService.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("HireDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Specialization")
                         .IsRequired()
@@ -54,7 +55,7 @@ namespace UserService.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("TeacherProfiles");
+                    b.ToTable("TeacherProfiles", "users");
                 });
 
             modelBuilder.Entity("UserService.Entities.User", b =>
@@ -71,10 +72,10 @@ namespace UserService.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("DateOfBirth")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -98,6 +99,9 @@ namespace UserService.Migrations
                     b.Property<int>("Role")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("StudentStatus")
+                        .HasColumnType("integer");
+
                     b.Property<string>("UserCode")
                         .IsRequired()
                         .HasColumnType("text");
@@ -108,7 +112,7 @@ namespace UserService.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", "users");
                 });
 
             modelBuilder.Entity("UserService.Entities.TeacherProfile", b =>

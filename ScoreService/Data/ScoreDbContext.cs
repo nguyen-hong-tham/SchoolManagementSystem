@@ -15,6 +15,7 @@ public class ScoreDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.HasDefaultSchema("scores");
 
         modelBuilder
             .Entity<Score>()

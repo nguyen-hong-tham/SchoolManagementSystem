@@ -12,14 +12,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ClassService.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260615170411_AddCachedSubjectTable")]
-    partial class AddCachedSubjectTable
+    [Migration("20260702112500_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("classes")
                 .HasAnnotation("ProductVersion", "9.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -39,7 +40,7 @@ namespace ClassService.Migrations
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -47,7 +48,7 @@ namespace ClassService.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CachedSubjects");
+                    b.ToTable("CachedSubjects", "classes");
                 });
 
             modelBuilder.Entity("ClassService.Entities.CachedUser", b =>
@@ -61,10 +62,13 @@ namespace ClassService.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Role")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("StudentStatus")
                         .HasColumnType("text");
 
                     b.Property<string>("UserCode")
@@ -73,7 +77,7 @@ namespace ClassService.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CachedUsers");
+                    b.ToTable("CachedUsers", "classes");
                 });
 
             modelBuilder.Entity("ClassService.Entities.Class", b =>
@@ -82,8 +86,11 @@ namespace ClassService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("GradeLevel")
                         .HasColumnType("integer");
@@ -97,11 +104,11 @@ namespace ClassService.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Classes");
+                    b.ToTable("Classes", "classes");
                 });
 
             modelBuilder.Entity("ClassService.Entities.HomeroomAssignment", b =>
@@ -111,7 +118,7 @@ namespace ClassService.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("AssignedDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("ClassId")
                         .HasColumnType("uuid");
@@ -125,7 +132,7 @@ namespace ClassService.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("HomeroomAssignments");
+                    b.ToTable("HomeroomAssignments", "classes");
                 });
 
             modelBuilder.Entity("ClassService.Entities.Schedule", b =>
@@ -159,7 +166,7 @@ namespace ClassService.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Schedules");
+                    b.ToTable("Schedules", "classes");
                 });
 
             modelBuilder.Entity("ClassService.Entities.StudentClass", b =>
@@ -169,13 +176,19 @@ namespace ClassService.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("AssignedDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("ClassId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("IsCurrent")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LeftDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("PromotionStatus")
+                        .HasColumnType("text");
 
                     b.Property<string>("SchoolYear")
                         .IsRequired()
@@ -186,7 +199,15 @@ namespace ClassService.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("StudentClasses");
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("ClassId", "IsCurrent");
+
+                    b.HasIndex("StudentId", "SchoolYear", "IsCurrent")
+                        .IsUnique()
+                        .HasFilter("\"IsCurrent\" = true");
+
+                    b.ToTable("StudentClasses", "classes");
                 });
 
             modelBuilder.Entity("ClassService.Entities.TeachingAssignment", b =>
@@ -196,7 +217,7 @@ namespace ClassService.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("AssignedDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("ClassId")
                         .HasColumnType("uuid");
@@ -213,7 +234,7 @@ namespace ClassService.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TeachingAssignments");
+                    b.ToTable("TeachingAssignments", "classes");
                 });
 #pragma warning restore 612, 618
         }

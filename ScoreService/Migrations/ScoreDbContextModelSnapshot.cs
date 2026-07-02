@@ -17,6 +17,7 @@ namespace ScoreService.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("scores")
                 .HasAnnotation("ProductVersion", "9.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -36,7 +37,7 @@ namespace ScoreService.Migrations
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -44,7 +45,7 @@ namespace ScoreService.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CachedSubjects");
+                    b.ToTable("CachedSubjects", "scores");
                 });
 
             modelBuilder.Entity("ScoreService.Entities.CachedUser", b =>
@@ -58,7 +59,7 @@ namespace ScoreService.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -70,7 +71,7 @@ namespace ScoreService.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CachedUsers");
+                    b.ToTable("CachedUsers", "scores");
                 });
 
             modelBuilder.Entity("ScoreService.Entities.Score", b =>
@@ -80,7 +81,7 @@ namespace ScoreService.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("SchoolYear")
                         .IsRequired()
@@ -105,7 +106,7 @@ namespace ScoreService.Migrations
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
@@ -113,7 +114,7 @@ namespace ScoreService.Migrations
 
                     b.HasIndex("SubjectId");
 
-                    b.ToTable("Scores", t =>
+                    b.ToTable("Scores", "scores", t =>
                         {
                             t.HasCheckConstraint("CK_Score_Points", "\"ScoreValue\" >= 0.0 AND \"ScoreValue\" <= 10.0");
                         });

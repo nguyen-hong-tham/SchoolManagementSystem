@@ -6,13 +6,17 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace SubjectService.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialSubjectCreate : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "subjects");
+
             migrationBuilder.CreateTable(
                 name: "Subjects",
+                schema: "subjects",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -20,7 +24,7 @@ namespace SubjectService.Migrations
                     Name = table.Column<string>(type: "text", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: false),
                     GradeLevel = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -29,6 +33,7 @@ namespace SubjectService.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_Subjects_Code",
+                schema: "subjects",
                 table: "Subjects",
                 column: "Code",
                 unique: true);
@@ -38,7 +43,8 @@ namespace SubjectService.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Subjects");
+                name: "Subjects",
+                schema: "subjects");
         }
     }
 }

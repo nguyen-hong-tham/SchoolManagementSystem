@@ -25,6 +25,7 @@ public class ApplicationDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.HasDefaultSchema("classes");
 
         modelBuilder.Entity<StudentClass>(entity =>
         {

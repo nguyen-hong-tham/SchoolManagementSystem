@@ -13,6 +13,7 @@ public class SubjectDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.HasDefaultSchema("subjects");
 
         // Tạo Index cho Code để tối ưu tốc độ tìm kiếm môn học
         modelBuilder.Entity<Subject>().HasIndex(s => s.Code).IsUnique();

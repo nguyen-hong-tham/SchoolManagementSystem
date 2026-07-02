@@ -47,11 +47,15 @@ builder.Services.AddMassTransit(x =>
         {
             cfg.Host(
                 builder.Configuration["MessageBroker:Host"] ?? "localhost",
-                "/",
+                builder.Configuration["MessageBroker:VirtualHost"] ?? "/",
                 h =>
                 {
                     h.Username(builder.Configuration["MessageBroker:Username"] ?? "guest");
                     h.Password(builder.Configuration["MessageBroker:Password"] ?? "guest");
+                    if (builder.Configuration.GetValue<bool>("MessageBroker:UseSsl"))
+                    {
+                        h.UseSsl(s => s.ServerName = builder.Configuration["MessageBroker:Host"]!);
+                    }
                 }
             );
 

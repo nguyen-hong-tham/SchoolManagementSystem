@@ -11,15 +11,19 @@ namespace ScoreService.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "scores");
+
             migrationBuilder.CreateTable(
                 name: "CachedSubjects",
+                schema: "scores",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Code = table.Column<string>(type: "text", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     GradeLevel = table.Column<int>(type: "integer", nullable: false),
-                    LastUpdated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    LastUpdated = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -28,13 +32,14 @@ namespace ScoreService.Migrations
 
             migrationBuilder.CreateTable(
                 name: "CachedUsers",
+                schema: "scores",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     UserCode = table.Column<string>(type: "text", nullable: false),
                     FullName = table.Column<string>(type: "text", nullable: false),
                     Role = table.Column<string>(type: "text", nullable: false),
-                    LastUpdated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    LastUpdated = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -43,6 +48,7 @@ namespace ScoreService.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Scores",
+                schema: "scores",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -53,8 +59,8 @@ namespace ScoreService.Migrations
                     Type = table.Column<int>(type: "integer", nullable: false),
                     Semester = table.Column<int>(type: "integer", nullable: false),
                     SchoolYear = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -63,12 +69,14 @@ namespace ScoreService.Migrations
                     table.ForeignKey(
                         name: "FK_Scores_CachedSubjects_SubjectId",
                         column: x => x.SubjectId,
+                        principalSchema: "scores",
                         principalTable: "CachedSubjects",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Scores_CachedUsers_StudentId",
                         column: x => x.StudentId,
+                        principalSchema: "scores",
                         principalTable: "CachedUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -76,11 +84,13 @@ namespace ScoreService.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_Scores_StudentId",
+                schema: "scores",
                 table: "Scores",
                 column: "StudentId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Scores_SubjectId",
+                schema: "scores",
                 table: "Scores",
                 column: "SubjectId");
         }
@@ -89,13 +99,16 @@ namespace ScoreService.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Scores");
+                name: "Scores",
+                schema: "scores");
 
             migrationBuilder.DropTable(
-                name: "CachedSubjects");
+                name: "CachedSubjects",
+                schema: "scores");
 
             migrationBuilder.DropTable(
-                name: "CachedUsers");
+                name: "CachedUsers",
+                schema: "scores");
         }
     }
 }

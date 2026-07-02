@@ -1,36 +1,7 @@
 version: '3.8'
 
 services:
-  # 1. PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
-    container_name: university-postgres
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password123
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - university-network
-
-  # 2. RabbitMQ Message Broker
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: university-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672" # Web UI Management
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - university-network
-
-  # 3. UserService
+  # 1. UserService
   user-service:
     build:
       context: ./UserService
@@ -40,20 +11,25 @@ services:
       - "5156:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=user_db;Username=postgres;Password=password123
-      - MessageBroker__Host=rabbitmq
-      - MessageBroker__Username=guest
-      - MessageBroker__Password=guest
-      - Jwt__Key=SuperSecretKeyForJwtAuthenticationThatIsLongEnoughToAvoidErrors123456!
+      - ConnectionStrings__DefaultConnection=${SUPABASE_DB_CONNECTION}
+      - MessageBroker__Host=${CLOUDAMQP_HOST}
+      - MessageBroker__Username=${CLOUDAMQP_USERNAME}
+      - MessageBroker__Password=${CLOUDAMQP_PASSWORD}
+      - MessageBroker__VirtualHost=${CLOUDAMQP_VIRTUALHOST}
+      - MessageBroker__UseSsl=true
+      - Jwt__Key=${JWT_KEY}
       - Jwt__Issuer=UserService
       - Jwt__Audience=UniversityManagement
-    depends_on:
-      - postgres
-      - rabbitmq
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 80M
     networks:
       - university-network
 
-  # 4. ClassService
+  # 2. ClassService
   class-service:
     build:
       context: ./ClassService
@@ -63,17 +39,22 @@ services:
       - "5124:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ClassDb;Username=postgres;Password=password123
-      - MessageBroker__Host=rabbitmq
-      - MessageBroker__Username=guest
-      - MessageBroker__Password=guest
-    depends_on:
-      - postgres
-      - rabbitmq
+      - ConnectionStrings__DefaultConnection=${SUPABASE_DB_CONNECTION}
+      - MessageBroker__Host=${CLOUDAMQP_HOST}
+      - MessageBroker__Username=${CLOUDAMQP_USERNAME}
+      - MessageBroker__Password=${CLOUDAMQP_PASSWORD}
+      - MessageBroker__VirtualHost=${CLOUDAMQP_VIRTUALHOST}
+      - MessageBroker__UseSsl=true
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 80M
     networks:
       - university-network
 
-  # 5. SubjectService
+  # 3. SubjectService
   subject-service:
     build:
       context: ./SubjectService
@@ -83,20 +64,25 @@ services:
       - "5187:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=SubjectDb;Username=postgres;Password=password123
-      - MessageBroker__Host=rabbitmq
-      - MessageBroker__Username=guest
-      - MessageBroker__Password=guest
-      - Jwt__Key=SuperSecretKeyForJwtAuthenticationThatIsLongEnoughToAvoidErrors123456!
+      - ConnectionStrings__DefaultConnection=${SUPABASE_DB_CONNECTION}
+      - MessageBroker__Host=${CLOUDAMQP_HOST}
+      - MessageBroker__Username=${CLOUDAMQP_USERNAME}
+      - MessageBroker__Password=${CLOUDAMQP_PASSWORD}
+      - MessageBroker__VirtualHost=${CLOUDAMQP_VIRTUALHOST}
+      - MessageBroker__UseSsl=true
+      - Jwt__Key=${JWT_KEY}
       - Jwt__Issuer=UserService
       - Jwt__Audience=UniversityManagement
-    depends_on:
-      - postgres
-      - rabbitmq
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 80M
     networks:
       - university-network
 
-  # 6. ScoreService
+  # 4. ScoreService
   score-service:
     build:
       context: ./ScoreService
@@ -106,20 +92,25 @@ services:
       - "5221:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ScoreDb;Username=postgres;Password=password123
-      - MessageBroker__Host=rabbitmq
-      - MessageBroker__Username=guest
-      - MessageBroker__Password=guest
-      - Jwt__Key=SuperSecretKeyForJwtAuthenticationThatIsLongEnoughToAvoidErrors123456!
+      - ConnectionStrings__DefaultConnection=${SUPABASE_DB_CONNECTION}
+      - MessageBroker__Host=${CLOUDAMQP_HOST}
+      - MessageBroker__Username=${CLOUDAMQP_USERNAME}
+      - MessageBroker__Password=${CLOUDAMQP_PASSWORD}
+      - MessageBroker__VirtualHost=${CLOUDAMQP_VIRTUALHOST}
+      - MessageBroker__UseSsl=true
+      - Jwt__Key=${JWT_KEY}
       - Jwt__Issuer=UserService
       - Jwt__Audience=UniversityManagement
-    depends_on:
-      - postgres
-      - rabbitmq
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 80M
     networks:
       - university-network
 
-  # 7. FrontendMVC
+  # 5. FrontendMVC
   frontend-mvc:
     build:
       context: ./FrontendMVC
@@ -133,6 +124,12 @@ services:
       - Microservices__ClassService=http://class-service:8080/api
       - Microservices__SubjectService=http://subject-service:8080/api
       - Microservices__ScoreService=http://score-service:8080/api
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+        reservations:
+          memory: 100M
     depends_on:
       - user-service
       - class-service
@@ -140,10 +137,6 @@ services:
       - score-service
     networks:
       - university-network
-
-volumes:
-  postgres_data:
-  rabbitmq_data:
 
 networks:
   university-network:

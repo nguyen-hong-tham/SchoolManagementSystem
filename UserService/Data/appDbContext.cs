@@ -16,6 +16,7 @@ public class AppDbContext : DbContext // kế thừa từ DbContext của Entity
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.HasDefaultSchema("users");
 
         modelBuilder.Entity<User>()
             .HasOne(u => u.TeacherProfile)

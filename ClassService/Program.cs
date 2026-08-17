@@ -68,6 +68,13 @@ builder.Services.AddMassTransit(x =>
     );
 });
 
+builder.Services.Configure<MassTransitHostOptions>(options =>
+{
+    options.WaitUntilStarted = false;
+    options.StartTimeout = TimeSpan.FromSeconds(2);
+    options.StopTimeout = TimeSpan.FromSeconds(2);
+});
+
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

@@ -46,6 +46,13 @@ builder.Services.AddMassTransit(x =>
     );
 });
 
+builder.Services.Configure<MassTransitHostOptions>(options =>
+{
+    options.WaitUntilStarted = false;
+    options.StartTimeout = TimeSpan.FromSeconds(2);
+    options.StopTimeout = TimeSpan.FromSeconds(2);
+});
+
 // 3. Cấu hình JWT Bearer Authentication
 builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

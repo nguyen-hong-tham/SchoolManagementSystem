@@ -14,15 +14,22 @@ public static class DbInitializer
         // Tự động áp dụng Migrations
         await context.Database.MigrateAsync();
 
-        // Clear existing records to ensure fresh seed
-        context.Schedules.RemoveRange(context.Schedules);
-        context.TeachingAssignments.RemoveRange(context.TeachingAssignments);
-        context.HomeroomAssignments.RemoveRange(context.HomeroomAssignments);
-        context.StudentClasses.RemoveRange(context.StudentClasses);
-        context.Classes.RemoveRange(context.Classes);
-        context.CachedSubjects.RemoveRange(context.CachedSubjects);
-        context.CachedUsers.RemoveRange(context.CachedUsers);
-        await context.SaveChangesAsync();
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE classes.\"StudentClasses\" ADD COLUMN IF NOT EXISTS \"PromotionStatus\" text;"
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ClassService DbInitializer] Note: {ex.Message}");
+        }
+
+        // Chỉ seed dữ liệu mẫu khi database chưa có lớp học
+        if (await context.Classes.AnyAsync())
+        {
+            return;
+        }
 
         // 1. Seed CachedUsers (1 Admin, 4 Teachers, 20 Students)
         var cachedUsers = new List<CachedUser>

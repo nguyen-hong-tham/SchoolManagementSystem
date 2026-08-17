@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Cổng Thông Tin Giáo Viên";
     Layout = "_Layout";
+    var homerooms = ViewBag.HomeroomAssignments as IEnumerable<HomeroomAssignmentViewModel> ?? new List<HomeroomAssignmentViewModel>();
+    var teacherSchedules = ViewBag.TeacherSchedules as IEnumerable<ScheduleViewModel> ?? new List<ScheduleViewModel>();
 }
 
 <div class="custom-card">
@@ -9,11 +11,40 @@
         <h3>Lớp Học & Môn Học Giảng Dạy</h3>
     </div>
 
+    @if (homerooms.Any())
+    {
+        <div style="margin-bottom: 30px;">
+            <h4 style="font-weight: 700; color: var(--color-primary); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px;">
+                <i class="fas fa-users" style="margin-right: 8px;"></i> Lớp Chủ Nhiệm (GVCN)
+            </h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px;">
+                @foreach (var hr in homerooms)
+                {
+                    <div class="custom-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between; border-left: 6px solid var(--color-success); box-shadow: var(--shadow-md);">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="badge" style="background-color: #d1fae5; color: #065f46;">Lớp Chủ Nhiệm</span>
+                                <span class="text-muted" style="font-size: 0.85rem;">Năm: @hr.SchoolYear</span>
+                            </div>
+                            <h4 style="font-size: 1.5rem; font-weight: 700; margin-top: 15px; color: var(--color-text-dark);">Lớp @hr.ClassName</h4>
+                        </div>
+                        <div style="margin-top: 25px; border-top: 1px solid var(--border-color); padding-top: 15px; display: flex; justify-content: flex-end;">
+                            <a asp-action="ClassStudents" asp-route-classId="@hr.ClassId" class="btn btn-success" style="padding: 8px 16px; font-size: 0.9rem; border-radius: 8px; background-color: #10b981; border-color: #10b981;">Xem hồ sơ học sinh →</a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <h4 style="font-weight: 700; color: var(--color-primary); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px;">
+        <i class="fas fa-chalkboard-teacher" style="margin-right: 8px;"></i> Lớp Giảng Dạy (GVBM)
+    </h4>
+
     @if (Model == null || !Model.Any())
     {
         <div class="text-center text-muted" style="padding: 40px 0;">
             <p style="font-size: 1.1rem; margin-bottom: 10px;">Bạn chưa được phân công giảng dạy bất kỳ lớp học nào.</p>
-            <p style="font-size: 0.9rem;">Vui lòng liên hệ Administrator để được cập nhật lịch phân công giảng dạy.</p>
         </div>
     }
     else
@@ -25,8 +56,7 @@
             {
                 <div class="custom-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between; border-left: 6px solid var(--color-primary); box-shadow: var(--shadow-md);">
                     <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="badge badge-primary">Khối lớp @(item.ClassName.StartsWith("10") ? "10" : (item.ClassName.StartsWith("11") ? "11" : "12"))</span>
+                        <div style="display: flex; justify-content: flex-end; align-items: center;">
                             <span class="text-muted" style="font-size: 0.85rem;">Năm: @item.SchoolYear</span>
                         </div>
                         <h4 style="font-size: 1.5rem; font-weight: 700; margin-top: 15px; color: var(--color-text-dark);">Lớp @item.ClassName</h4>
@@ -39,4 +69,48 @@
             }
         </div>
     }
+
+    <!-- Schedule Card -->
+    <div class="custom-card" style="margin-top: 30px;">
+        <div class="card-header-flex">
+            <h3>Lịch Giảng Dạy Tuần</h3>
+        </div>
+
+        @if (!teacherSchedules.Any())
+        {
+            <div class="text-center text-muted" style="padding: 20px 0;">Không có lịch giảng dạy trong năm học này.</div>
+        }
+        else
+        {
+            <div class="schedule-grid">
+                <div class="schedule-header">Tiết</div>
+                <div class="schedule-header">Thứ Hai</div>
+                <div class="schedule-header">Thứ Ba</div>
+                <div class="schedule-header">Thứ Tư</div>
+                <div class="schedule-header">Thứ Năm</div>
+                <div class="schedule-header">Thứ Sáu</div>
+
+                @for (int period = 1; period <= 10; period++)
+                {
+                    <div class="schedule-row">
+                        <div class="schedule-cell period-header">Tiết @period</div>
+                        @for (int day = 2; day <= 6; day++)
+                        {
+                            var item = teacherSchedules.FirstOrDefault(s => s.DayOfWeek == day && s.Period == period);
+                            <div class="schedule-cell">
+                                @if (item != null)
+                                {
+                                    <div class="schedule-item">
+                                        <div class="sub">@item.SubjectName</div>
+                                        <div class="room" style="font-weight: 600;">Lớp @item.ClassName</div>
+                                        <div class="room">Phòng: @item.Room</div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
 </div>

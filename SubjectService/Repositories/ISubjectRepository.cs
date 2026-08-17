@@ -9,7 +9,7 @@ public interface ISubjectRepository
 {
     Task<IEnumerable<Subject>> GetAllSubjectsAsync();
     Task<Subject?> GetSubjectByIdAsync(Guid id);
-    Task<Subject?> GetSubjectByCodeAsync(string code);
+    Task<Subject?> GetSubjectByCodeAsync(string code, Guid? excludeId = null);
     Task<Subject> CreateSubjectAsync(Subject subject);
     Task UpdateSubjectAsync(Subject subject);
     Task DeleteSubjectAsync(Guid id);

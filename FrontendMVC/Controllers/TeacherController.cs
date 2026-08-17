@@ -42,24 +42,53 @@ public class TeacherController : Controller
         }
 
         var classClient = _clientFactory.CreateClient("ClassService");
-        var assignments = new List<TeachingAssignmentViewModel>();
+        var teachingAssignments = new List<TeachingAssignmentViewModel>();
+        var homeroomAssignments = new List<HomeroomAssignmentViewModel>();
+        
         try
         {
-            var response = await classClient.GetFromJsonAsync<
-                IEnumerable<TeachingAssignmentViewModel>
-            >($"teachers/{teacherId}/classes");
+            var response = await classClient.GetFromJsonAsync<IEnumerable<TeachingAssignmentViewModel>>(
+                $"teachers/{teacherId}/classes"
+            );
             if (response != null)
             {
-                assignments = response.ToList();
+                teachingAssignments = response.ToList();
             }
         }
         catch { }
 
-        return View(assignments);
+        try
+        {
+            var hrResp = await classClient.GetFromJsonAsync<IEnumerable<HomeroomAssignmentViewModel>>(
+                "classes/homerooms"
+            );
+            if (hrResp != null)
+            {
+                homeroomAssignments = hrResp.Where(h => h.TeacherId == teacherId).ToList();
+            }
+        }
+        catch { }
+
+        var teacherSchedules = new List<ScheduleViewModel>();
+        try
+        {
+            var scheduleResp = await classClient.GetFromJsonAsync<IEnumerable<ScheduleViewModel>>(
+                $"teachers/{teacherId}/schedule"
+            );
+            if (scheduleResp != null)
+            {
+                teacherSchedules = scheduleResp.ToList();
+            }
+        }
+        catch { }
+
+        ViewBag.HomeroomAssignments = homeroomAssignments;
+        ViewBag.TeacherSchedules = teacherSchedules;
+        return View(teachingAssignments);
     }
 
     [HttpGet]
-    public async Task<IActionResult> ClassStudents(Guid classId, Guid subjectId)
+    public async Task<IActionResult> ClassStudents(Guid classId, Guid? subjectId, int semester = 1)
     {
         var redirect = CheckTeacherRole();
         if (redirect != null)
@@ -70,7 +99,7 @@ public class TeacherController : Controller
 
         ClassViewModel? classInfo = null;
         var students = new List<StudentClassViewModel>();
-        var subjectName = "Môn học";
+        var subjectName = subjectId.HasValue ? "Môn học" : "Chủ nhiệm";
 
         try
         {
@@ -91,47 +120,75 @@ public class TeacherController : Controller
         catch { }
 
         // Tìm tên môn học từ cached subjects
-        try
+        if (subjectId.HasValue)
         {
-            var subResp = await classClient.GetFromJsonAsync<IEnumerable<dynamic>>(
-                $"classes/{classId}/schedule?schoolYear={Uri.EscapeDataString(classInfo.SchoolYear)}"
-            );
-            if (subResp != null)
-            {
-                var sch = subResp.FirstOrDefault(s =>
-                    s.subjectId.ToString() == subjectId.ToString()
-                );
-                if (sch != null)
-                {
-                    subjectName = sch.subjectName;
-                }
-            }
-        }
-        catch { }
-
-        // Lấy điểm số của từng học sinh cho môn học này
-        var studentScores = new Dictionary<Guid, List<ScoreResponseViewModel>>();
-        foreach (var student in students)
-        {
-            var scoresList = new List<ScoreResponseViewModel>();
             try
             {
-                var scoresResp = await scoreClient.GetFromJsonAsync<
-                    IEnumerable<ScoreResponseViewModel>
-                >($"scores/student/{student.StudentId}");
-                if (scoresResp != null)
+                var subResp = await classClient.GetFromJsonAsync<IEnumerable<dynamic>>(
+                    $"classes/{classId}/schedule?schoolYear={Uri.EscapeDataString(classInfo.SchoolYear)}"
+                );
+                if (subResp != null)
                 {
-                    scoresList = scoresResp.Where(s => s.SubjectId == subjectId).ToList();
+                    var sch = subResp.FirstOrDefault(s =>
+                        s.subjectId.ToString() == subjectId.Value.ToString()
+                    );
+                    if (sch != null)
+                    {
+                        subjectName = sch.subjectName;
+                    }
                 }
             }
             catch { }
+        }
+
+        // Lấy điểm số của từng học sinh cho môn học này
+        var studentScores = new Dictionary<Guid, List<ScoreResponseViewModel>>();
+        int totalFinalScores = 0;
+        int totalScores = 0;
+
+        foreach (var student in students)
+        {
+            var scoresList = new List<ScoreResponseViewModel>();
+            if (subjectId.HasValue)
+            {
+                try
+                {
+                    var scoresResp = await scoreClient.GetFromJsonAsync<IEnumerable<ScoreResponseViewModel>>(
+                        $"scores/student/{student.StudentId}?schoolYear={Uri.EscapeDataString(classInfo.SchoolYear)}"
+                    );
+                    if (scoresResp != null)
+                    {
+                        scoresList = scoresResp
+                            .Where(s => s.SubjectId == subjectId.Value && s.Semester == semester)
+                            .ToList();
+                    }
+                }
+                catch { }
+            }
             studentScores[student.StudentId] = scoresList;
+            totalScores += scoresList.Count;
+            if (scoresList.Any(s => s.Type == "Final"))
+            {
+                totalFinalScores++;
+            }
+        }
+
+        string gradingStatus = "Chưa nhập điểm";
+        if (students.Any() && totalFinalScores == students.Count)
+        {
+            gradingStatus = "Đã chốt sổ";
+        }
+        else if (totalScores > 0)
+        {
+            gradingStatus = "Đang nhập";
         }
 
         ViewBag.ClassInfo = classInfo;
         ViewBag.SubjectId = subjectId;
         ViewBag.SubjectName = subjectName;
         ViewBag.StudentScores = studentScores;
+        ViewBag.Semester = semester;
+        ViewBag.GradingStatus = gradingStatus;
 
         return View(students);
     }
@@ -294,6 +351,80 @@ public class TeacherController : Controller
         }
         catch { }
         ViewBag.TeachingAssignments = assignments;
+
+        return View(profile);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> StudentProfile(Guid studentId, int semester = 1, int? activeTab = null)
+    {
+        var redirect = CheckTeacherRole();
+        if (redirect != null)
+            return RedirectToAction("AccessDenied", "Auth");
+
+        var userClient = _clientFactory.CreateClient("UserService");
+        var classClient = _clientFactory.CreateClient("ClassService");
+
+        UserViewModel? profile = null;
+        try
+        {
+            profile = await userClient.GetFromJsonAsync<UserViewModel>($"users/{studentId}");
+        }
+        catch { }
+
+        if (profile == null)
+            return NotFound();
+
+        var historyList = new List<StudentClassViewModel>();
+        try
+        {
+            var historyResp = await classClient.GetFromJsonAsync<IEnumerable<StudentClassViewModel>>(
+                $"student-classes/students/{studentId}/history"
+            );
+            if (historyResp != null)
+            {
+                historyList = historyResp.ToList();
+            }
+        }
+        catch { }
+
+        var scoreClient = _clientFactory.CreateClient("ScoreService");
+
+        var allScores = new List<ScoreResponseViewModel>();
+        try
+        {
+            var scoresResp = await scoreClient.GetFromJsonAsync<
+                IEnumerable<ScoreResponseViewModel>
+            >($"scores/student/{studentId}");
+            if (scoresResp != null)
+            {
+                allScores = scoresResp.ToList();
+            }
+        }
+        catch { }
+
+        var academicYears = new List<StudentAcademicYearViewModel>();
+
+        foreach (var sc in historyList)
+        {
+            var yearScores = allScores.Where(s => s.SchoolYear == sc.SchoolYear && s.Semester == semester).ToList();
+
+            academicYears.Add(
+                new StudentAcademicYearViewModel
+                {
+                    SchoolYear = sc.SchoolYear,
+                    ClassId = sc.ClassId,
+                    ClassName = sc.ClassName,
+                    Scores = yearScores,
+                    IsCurrent = sc.IsCurrent,
+                }
+            );
+        }
+
+        ViewBag.ClassHistory = historyList;
+        ViewBag.AcademicYears = academicYears;
+        ViewBag.Semester = semester;
+        ViewBag.ActiveTab = activeTab ?? (academicYears.Count > 0 ? academicYears.Count - 1 : 0);
 
         return View(profile);
     }

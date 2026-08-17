@@ -7,37 +7,45 @@
 }
 
 <div class="mb-3">
-    <a asp-action="Subjects" class="btn btn-secondary" style="padding: 8px 16px; text-decoration: none;">← Quay lại danh sách môn học</a>
+    <a asp-action="Subjects" class="btn btn-secondary" style="padding: 8px 16px; text-decoration: none; border-radius: 8px;">← Quay lại danh sách môn học</a>
 </div>
 
-<div class="custom-card" style="max-width: 600px; margin: 0 auto;">
-    <h3 style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">Chỉnh Sửa Môn Học</h3>
+<div class="custom-card" style="max-width: 620px; margin: 0 auto; padding: 28px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
+        <div style="width: 44px; height: 44px; border-radius: 10px; background-color: #ede9fe; color: #6366f1; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+            
+        </div>
+        <div>
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: #0f172a; margin-bottom: 2px;">Chỉnh Sửa Môn Học</h3>
+            <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 0;">Cập nhật thông tin và trạng thái giảng dạy của môn học</p>
+        </div>
+    </div>
 
     <form asp-action="EditSubject" asp-route-id="@subjectId" method="post">
         <div asp-validation-summary="ModelOnly" class="text-danger" style="margin-bottom: 15px; font-size: 0.9rem;"></div>
 
-        <div class="form-group">
-            <label class="form-label">Mã môn học</label>
-            <!-- Mã môn học hiển thị nhưng không cho chỉnh sửa do thuộc về thiết kế cốt lõi API -->
-            <input class="form-control" value="@code" readonly style="background-color: #f1f5f9; color: #64748b; cursor: not-allowed;" />
-            <p class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">Lưu ý: Mã môn học là thông tin định danh hệ thống, không thể sửa đổi.</p>
+        <!-- Mã môn học -->
+        <div class="form-group" style="margin-bottom: 18px;">
+            <label class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 6px;">Mã môn học</label>
+            <input class="form-control" value="@code" readonly style="background-color: #f1f5f9; color: #475569; font-family: monospace; font-weight: 700; cursor: not-allowed; padding: 10px 14px; border-radius: 8px;" />
+            <p class="text-muted" style="font-size: 0.78rem; margin-top: 4px; margin-bottom: 0;">ℹ️ Mã môn học là định danh cốt lõi, liên kết với lịch sử điểm số nên được cố định.</p>
         </div>
 
-        <div class="form-group">
-            <label asp-for="Name" class="form-label">Tên môn học</label>
-            <input asp-for="Name" class="form-control" placeholder="Ví dụ: Toán Học, Ngữ Văn" required />
+        <!-- Tên môn học -->
+        <div class="form-group" style="margin-bottom: 18px;">
+            <label asp-for="Name" class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 6px;">
+                Tên môn học <span class="text-danger">*</span>
+            </label>
+            <input asp-for="Name" class="form-control" placeholder="Ví dụ: Toán Học, Ngữ Văn" required style="padding: 10px 14px; border-radius: 8px;" />
             <span asp-validation-for="Name" class="text-danger" style="font-size: 0.8rem;"></span>
         </div>
 
-        <div class="form-group">
-            <label asp-for="Description" class="form-label">Mô tả môn học</label>
-            <textarea asp-for="Description" class="form-control" rows="3" placeholder="Nhập mô tả môn học..." style="resize: vertical;"></textarea>
-            <span asp-validation-for="Description" class="text-danger" style="font-size: 0.8rem;"></span>
-        </div>
-
-        <div class="form-group">
-            <label asp-for="GradeLevel" class="form-label">Khối lớp áp dụng</label>
-            <select asp-for="GradeLevel" class="form-control" required>
+        <!-- Khối lớp áp dụng -->
+        <div class="form-group" style="margin-bottom: 18px;">
+            <label asp-for="GradeLevel" class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 6px;">
+                Khối lớp áp dụng <span class="text-danger">*</span>
+            </label>
+            <select asp-for="GradeLevel" class="form-control" required style="padding: 10px 14px; border-radius: 8px;">
                 <option value="10">Khối 10</option>
                 <option value="11">Khối 11</option>
                 <option value="12">Khối 12</option>
@@ -45,9 +53,34 @@
             <span asp-validation-for="GradeLevel" class="text-danger" style="font-size: 0.8rem;"></span>
         </div>
 
-        <div style="display: flex; gap: 12px; margin-top: 25px;">
-            <button type="submit" class="btn btn-primary" style="flex: 1; padding: 12px;">Cập nhật</button>
-            <a asp-action="Subjects" class="btn btn-secondary" style="flex: 1; padding: 12px; text-align: center; text-decoration: none;">Hủy</a>
+        <!-- Trạng thái giảng dạy -->
+        <div class="form-group" style="margin-bottom: 18px;">
+            <label asp-for="IsActive" class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 6px;">
+                Trạng thái hoạt động
+            </label>
+            <select asp-for="IsActive" class="form-control" style="padding: 10px 14px; border-radius: 8px;">
+                <option value="true" selected="@(Model?.IsActive == true)"> Đang giảng dạy (Được phép phân công)</option>
+                <option value="false" selected="@(Model?.IsActive == false)"> Ngừng giảng dạy (Ẩn khỏi phân công mới)</option>
+            </select>
+            <p class="text-muted" style="font-size: 0.78rem; margin-top: 4px; margin-bottom: 0;">💡 Khi ngừng giảng dạy, môn học sẽ không xuất hiện trong dropdown phân công mới nhưng toàn bộ điểm số cũ vẫn được bảo lưu.</p>
+        </div>
+
+        <!-- Mô tả -->
+        <div class="form-group" style="margin-bottom: 24px;">
+            <label asp-for="Description" class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 6px;">
+                Mô tả môn học
+            </label>
+            <textarea asp-for="Description" class="form-control" rows="3" placeholder="Nhập mô tả môn học..." style="resize: vertical; padding: 10px 14px; border-radius: 8px;"></textarea>
+            <span asp-validation-for="Description" class="text-danger" style="font-size: 0.8rem;"></span>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+            <button type="submit" class="btn btn-primary" style="flex: 1; padding: 12px; font-weight: 600; border-radius: 8px;">
+                 Cập nhật
+            </button>
+            <a asp-action="Subjects" class="btn btn-secondary" style="flex: 1; padding: 12px; text-align: center; text-decoration: none; border-radius: 8px;">
+                Hủy
+            </a>
         </div>
     </form>
 </div>

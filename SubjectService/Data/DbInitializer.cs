@@ -13,9 +13,22 @@ public static class DbInitializer
         // Tự động chạy migration
         await context.Database.MigrateAsync();
 
-        // Xóa sạch dữ liệu cũ
-        context.Subjects.RemoveRange(context.Subjects);
-        await context.SaveChangesAsync();
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE subjects.\"Subjects\" ADD COLUMN IF NOT EXISTS \"IsActive\" boolean NOT NULL DEFAULT true;"
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SubjectService DbInitializer] Note: {ex.Message}");
+        }
+
+        // Chỉ seed dữ liệu mẫu khi database chưa có môn học
+        if (await context.Subjects.AnyAsync())
+        {
+            return;
+        }
 
         var subjects = new List<Subject>
         {

@@ -10,5 +10,15 @@ public class ClassResponseDto
 
     public string SchoolYear { get; set; } = string.Empty;
 
+    public int Capacity { get; set; } = 45;
+
+    public int CurrentStudentCount { get; set; }
+
+    public Guid? HomeroomTeacherId { get; set; }
+
+    public string? HomeroomTeacherName { get; set; }
+
+    public string? HomeroomTeacherCode { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }

@@ -11,5 +11,7 @@ public interface ISubjectService
     Task<SubjectResponse> GetSubjectByIdAsync(Guid id);
     Task<SubjectResponse> CreateSubjectAsync(CreateSubjectRequest request);
     Task<SubjectResponse> UpdateSubjectAsync(Guid id, UpdateSubjectRequest request);
+    Task<SubjectResponse> ToggleStatusAsync(Guid id);
+    Task<bool> CheckCodeExistsAsync(string code, Guid? excludeId = null);
     Task DeleteSubjectAsync(Guid id);
 }

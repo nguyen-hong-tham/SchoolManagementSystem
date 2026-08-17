@@ -87,11 +87,62 @@ public class ScoreRepository : IScoreRepository
         var studentExists = await _db.CachedUsers.AnyAsync(u =>
             u.Id == studentId && u.Role == "Student"
         );
-        var subjectExists = await _db.CachedSubjects.AnyAsync(s => s.Id == subjectId);
+        if (!studentExists)
+        {
+            await TryFetchAndCacheUserAsync(studentId);
+            studentExists = await _db.CachedUsers.AnyAsync(u =>
+                u.Id == studentId && u.Role == "Student"
+            );
+        }
+
         var teacherExists = await _db.CachedUsers.AnyAsync(t =>
             t.Id == teacherId && t.Role == "Teacher"
         );
+        if (!teacherExists)
+        {
+            await TryFetchAndCacheUserAsync(teacherId);
+            teacherExists = await _db.CachedUsers.AnyAsync(t =>
+                t.Id == teacherId && t.Role == "Teacher"
+            );
+        }
+
+        var subjectExists = await _db.CachedSubjects.AnyAsync(s => s.Id == subjectId);
         return studentExists && subjectExists && teacherExists;
+    }
+
+    private async Task TryFetchAndCacheUserAsync(Guid userId)
+    {
+        try
+        {
+            using var client = new System.Net.Http.HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(5);
+            var response = await client.GetAsync($"http://localhost:5156/api/users/internal/{userId}");
+            if (response.IsSuccessStatusCode)
+            {
+                var data = await System.Net.Http.Json.HttpContentJsonExtensions.ReadFromJsonAsync<System.Text.Json.JsonElement>(response.Content);
+                string userCode = data.TryGetProperty("userCode", out var uc) ? uc.GetString() ?? "" : "";
+                string fullName = data.TryGetProperty("fullName", out var fn) ? fn.GetString() ?? "" : "";
+                string role = data.TryGetProperty("role", out var rl) ? rl.GetString() ?? "" : "";
+
+                var user = await _db.CachedUsers.FirstOrDefaultAsync(u => u.Id == userId);
+                if (user == null)
+                {
+                    _db.CachedUsers.Add(new CachedUser
+                    {
+                        Id = userId,
+                        UserCode = userCode,
+                        FullName = fullName,
+                        Role = role,
+                        LastUpdated = DateTime.UtcNow
+                    });
+                    await _db.SaveChangesAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ScoreService UserCache] Fallback error for userId {userId}: {ex.Message}");
+        }
     }
 
     public async Task SaveChangesAsync()

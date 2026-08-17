@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ClassService.Data;
 using ClassService.DTOs.HomeroomAssignments;
 using ClassService.Entities;
+using ClassService.Helpers;
 using ClassService.Repositories.Interfaces;
 using ClassService.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -41,9 +42,10 @@ public class HomeroomAssignmentService : IHomeroomAssignmentService
             throw new KeyNotFoundException($"Không tìm thấy lớp học với ID: {classId}");
         }
 
-        // Kiểm tra giáo viên từ bảng đệm CachedUsers
-        var cachedTeacher = await _dbContext.CachedUsers.FirstOrDefaultAsync(u =>
-            u.Id == dto.TeacherId
+        // Kiểm tra giáo viên từ bảng đệm CachedUsers (tự động fallback sang UserService nếu chưa cache)
+        var cachedTeacher = await UserCacheHelper.GetOrFetchCachedUserAsync(
+            _dbContext,
+            dto.TeacherId
         );
         if (cachedTeacher == null)
         {
@@ -81,6 +83,7 @@ public class HomeroomAssignmentService : IHomeroomAssignmentService
         {
             Id = newAssignment.Id,
             ClassId = newAssignment.ClassId,
+            ClassName = targetClass.Name,
             TeacherId = newAssignment.TeacherId,
             SchoolYear = newAssignment.SchoolYear,
             AssignedDate = newAssignment.AssignedDate,
@@ -101,9 +104,10 @@ public class HomeroomAssignmentService : IHomeroomAssignmentService
             throw new KeyNotFoundException($"Không tìm thấy lớp học với ID: {classId}");
         }
 
-        // Kiểm tra giáo viên từ bảng đệm CachedUsers
-        var cachedTeacher = await _dbContext.CachedUsers.FirstOrDefaultAsync(u =>
-            u.Id == dto.TeacherId
+        // Kiểm tra giáo viên từ bảng đệm CachedUsers (tự động fallback sang UserService nếu chưa cache)
+        var cachedTeacher = await UserCacheHelper.GetOrFetchCachedUserAsync(
+            _dbContext,
+            dto.TeacherId
         );
         if (cachedTeacher == null)
         {
@@ -137,6 +141,7 @@ public class HomeroomAssignmentService : IHomeroomAssignmentService
         {
             Id = currentHomeroom.Id,
             ClassId = currentHomeroom.ClassId,
+            ClassName = targetClass.Name,
             TeacherId = currentHomeroom.TeacherId,
             SchoolYear = currentHomeroom.SchoolYear,
             AssignedDate = currentHomeroom.AssignedDate,
@@ -157,13 +162,16 @@ public class HomeroomAssignmentService : IHomeroomAssignmentService
         );
         if (homeroom == null)
             return null;
-        var teacher = await _dbContext.CachedUsers.FirstOrDefaultAsync(u =>
-            u.Id == homeroom.TeacherId
+        var teacher = await UserCacheHelper.GetOrFetchCachedUserAsync(
+            _dbContext,
+            homeroom.TeacherId
         );
+        var targetClass = await _classRepository.GetByIdAsync(homeroom.ClassId);
         return new HomeroomAssignmentResponseDto
         {
             Id = homeroom.Id,
             ClassId = homeroom.ClassId,
+            ClassName = targetClass?.Name ?? string.Empty,
             TeacherId = homeroom.TeacherId,
             SchoolYear = homeroom.SchoolYear,
             AssignedDate = homeroom.AssignedDate,
@@ -179,16 +187,23 @@ public class HomeroomAssignmentService : IHomeroomAssignmentService
     {
         var history = await _homeroomRepository.GetHistoryByTeacherAsync(teacherId);
         var teacher = await _dbContext.CachedUsers.FirstOrDefaultAsync(u => u.Id == teacherId);
+        var classIds = history.Select(h => h.ClassId).Distinct().ToList();
+        var classes = await _classRepository.GetAllAsync(); // could be optimized, but ok
+        
         return history
-            .Select(h => new HomeroomAssignmentResponseDto
-            {
-                Id = h.Id,
-                ClassId = h.ClassId,
-                TeacherId = h.TeacherId,
-                SchoolYear = h.SchoolYear,
-                AssignedDate = h.AssignedDate,
-                TeacherName = teacher?.FullName ?? string.Empty,
-                TeacherCode = teacher?.UserCode ?? string.Empty,
+            .Select(h => {
+                var targetClass = classes.FirstOrDefault(c => c.Id == h.ClassId);
+                return new HomeroomAssignmentResponseDto
+                {
+                    Id = h.Id,
+                    ClassId = h.ClassId,
+                    ClassName = targetClass?.Name ?? string.Empty,
+                    TeacherId = h.TeacherId,
+                    SchoolYear = h.SchoolYear,
+                    AssignedDate = h.AssignedDate,
+                    TeacherName = teacher?.FullName ?? string.Empty,
+                    TeacherCode = teacher?.UserCode ?? string.Empty,
+                };
             })
             .ToList();
     }
@@ -215,14 +230,18 @@ public class HomeroomAssignmentService : IHomeroomAssignmentService
             .CachedUsers.Where(u => teacherIds.Contains(u.Id))
             .ToListAsync();
 
+        var classes = await _classRepository.GetAllAsync();
+
         return homerooms
             .Select(h =>
             {
                 var teacher = teachers.FirstOrDefault(t => t.Id == h.TeacherId);
+                var targetClass = classes.FirstOrDefault(c => c.Id == h.ClassId);
                 return new HomeroomAssignmentResponseDto
                 {
                     Id = h.Id,
                     ClassId = h.ClassId,
+                    ClassName = targetClass?.Name ?? string.Empty,
                     TeacherId = h.TeacherId,
                     SchoolYear = h.SchoolYear,
                     AssignedDate = h.AssignedDate,

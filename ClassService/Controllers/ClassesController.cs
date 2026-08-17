@@ -21,8 +21,15 @@ public class ClassesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ClassResponseDto>> CreateAsync(CreateClassDto request)
     {
-        var classes = await _classService.CreateAsync(request);
-        return CreatedAtAction("GetById", new { id = classes.Id }, classes);
+        try
+        {
+            var classes = await _classService.CreateAsync(request);
+            return CreatedAtAction("GetById", new { id = classes.Id }, classes);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { Message = ex.Message });
+        }
     }
 
     [HttpGet("{id}")]
@@ -66,6 +73,10 @@ public class ClassesController : ControllerBase
         {
             return NotFound();
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { Message = ex.Message });
+        }
     }
 
     [HttpDelete("{id}")]
@@ -82,7 +93,11 @@ public class ClassesController : ControllerBase
         }
         catch (KeyNotFoundException)
         {
-            return NotFound();
+            return NotFound(new { message = $"Không tìm thấy lớp học với ID: {id}" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 }

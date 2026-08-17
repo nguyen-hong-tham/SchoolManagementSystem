@@ -75,4 +75,24 @@ public class AdminController : ControllerBase
         var teachers = await _authService.GetTeachers();
         return Ok(teachers);
     }
+
+    [HttpGet("check-unique")]
+    public async Task<IActionResult> CheckUnique(
+        [FromQuery] string? userCode,
+        [FromQuery] string? username,
+        [FromQuery] string? email,
+        [FromQuery] string? phoneNumber,
+        [FromQuery] Guid? excludeId
+    )
+    {
+        var result = await _authService.CheckAvailabilityAsync(userCode, username, email, phoneNumber, excludeId);
+        return Ok(result);
+    }
+
+    [HttpGet("next-user-code")]
+    public async Task<IActionResult> GetNextUserCode([FromQuery] string role)
+    {
+        var code = await _authService.GetNextUserCodeAsync(role ?? "Student");
+        return Ok(new { userCode = code });
+    }
 }

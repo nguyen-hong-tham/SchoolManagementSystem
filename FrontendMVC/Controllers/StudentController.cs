@@ -29,7 +29,7 @@ public class StudentController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Dashboard()
+    public async Task<IActionResult> Dashboard(int semester = 1, int? activeTab = null)
     {
         var redirect = CheckStudentRole();
         if (redirect != null)
@@ -105,7 +105,7 @@ public class StudentController : Controller
             }
             catch { }
 
-            var yearScores = allScores.Where(s => s.SchoolYear == sc.SchoolYear).ToList();
+            var yearScores = allScores.Where(s => s.SchoolYear == sc.SchoolYear && s.Semester == semester).ToList();
 
             academicYears.Add(
                 new StudentAcademicYearViewModel
@@ -122,6 +122,8 @@ public class StudentController : Controller
 
         ViewBag.Profile = profile;
         ViewBag.AcademicYears = academicYears;
+        ViewBag.Semester = semester;
+        ViewBag.ActiveTab = activeTab ?? (academicYears.Count > 0 ? academicYears.Count - 1 : 0);
 
         return View();
     }

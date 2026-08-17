@@ -14,5 +14,7 @@ public class Subject
 
     public int GradeLevel { get; set; } // Khối lớp từ 1 đến 12.
 
+    public bool IsActive { get; set; } = true; // Trạng thái: true = Đang giảng dạy, false = Ngừng giảng dạy
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

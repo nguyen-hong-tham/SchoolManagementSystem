@@ -122,6 +122,26 @@ public class UserController : ControllerBase
         }
     }
 
+    [HttpGet("internal/{id:guid}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetInternalById(Guid id)
+    {
+        var user = await _authService.GetUserById(id);
+        if (user == null)
+        {
+            return NotFound(new { message = $"User with ID {id} not found" });
+        }
+        return Ok(new
+        {
+            Id = user.Id,
+            UserCode = user.UserCode,
+            FullName = user.FullName,
+            Role = user.Role.ToString(),
+            StudentStatus = user.StudentStatus?.ToString(),
+            ClassId = user.ClassId
+        });
+    }
+
     [HttpPost("internal/sync-class")]
     [AllowAnonymous]
     public async Task<IActionResult> SyncClassInternal([FromBody] SyncClassRequestDto request)

@@ -67,6 +67,10 @@
                 <input type="hidden" name="SchoolYear" value="@classInfo?.SchoolYear" />
                 <select id="homeroomTeacherSelect" name="TeacherId" class="form-control" style="padding: 6px 10px; font-size: 0.85rem; width: 170px; border-radius: 8px;" required>
                     <option value="">-- Chọn GVCN --</option>
+                    @if (homeroom != null && !availableHomeroomTeachers.Any(t => t.Id == homeroom.TeacherId))
+                    {
+                        <option value="@homeroom.TeacherId" selected="selected">@homeroom.TeacherName (@homeroom.TeacherCode)</option>
+                    }
                     @foreach (var t in availableHomeroomTeachers)
                     {
                         <option value="@t.Id" selected="@(homeroom?.TeacherId == t.Id)">@t.FullName (@t.UserCode)</option>
@@ -185,7 +189,37 @@
                         </tr>
                     </thead>
                     <tbody id="teachingAssignmentsTableBody">
-                        <!-- Loaded dynamically -->
+                        @if (teachingAssignments != null && teachingAssignments.Any())
+                        {
+                            var idx = 1;
+                            foreach (var ta in teachingAssignments)
+                            {
+                                var dateStr = ta.AssignedDate.ToString("dd/MM/yyyy HH:mm");
+                                <tr>
+                                    <td>@(idx++)</td>
+                                    <td class="fw-bold">@ta.SubjectName</td>
+                                    <td>@ta.TeacherName</td>
+                                    <td><span class="badge bg-light text-dark border" style="padding: 5px 10px;">@ta.TeacherCode</span></td>
+                                    <td>@dateStr</td>
+                                    <td>
+                                        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                            <button type="button" class="btn btn-secondary btn-sm" onclick="showDetail('@ta.TeacherId')" style="padding: 5px 10px; font-size: 0.8rem; border-color: #cbd5e1; background: #ffffff; color: #475569;"> Chi tiết</button>
+                                            <form action="/Admin/RemoveTeaching" method="post" class="remove-teaching-form" data-subject-id="@ta.SubjectId" style="margin: 0;">
+                                                <input type="hidden" name="classId" value="@classInfo?.Id" />
+                                                <input type="hidden" name="subjectId" value="@ta.SubjectId" />
+                                                <button type="submit" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 0.8rem;"> Xóa phân công</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-muted" style="padding: 30px 0;">Lớp học hiện tại chưa phân công giáo viên bộ môn.</td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
             </div>
@@ -206,7 +240,7 @@
                     <label class="form-label">Chọn Môn học</label>
                     <select id="assignSubjectSelect" name="SubjectId" class="form-control" required>
                         <option value="">-- Chọn môn --</option>
-                        @foreach (var sub in allSubjects.Where(s => s.GradeLevel == classInfo.GradeLevel))
+                        @foreach (var sub in allSubjects.Where(s => classInfo != null && s.GradeLevel == classInfo.GradeLevel))
                         {
                             var isAssigned = teachingAssignments?.Any(ta => ta.SubjectId == sub.Id) ?? false;
                             <option value="@sub.Id">@sub.Name (@sub.Code) @(isAssigned ? "- [Đã phân công]" : "")</option>
@@ -236,20 +270,25 @@
     <div style="display: grid; grid-template-columns: 2.1fr 0.9fr; gap: 30px; align-items: start;">
         <!-- Timetable Grid (Left 70%) -->
         <div class="custom-card" style="margin-bottom: 0;">
-            <div class="card-header-flex" style="margin-bottom: 20px;">
-                <h3 style="margin: 0; font-size: 1.15rem;">Thời Khóa Biểu Tuần</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <span></span> Thời Khóa Biểu Tuần
+                    </h3>
+                    <p style="color: #64748b; font-size: 0.82rem; margin: 2px 0 0 0;">Click vào ô để Sửa, rê chuột để Xóa tiết học</p>
+                </div>
             </div>
 
-            <div class="schedule-grid" style="display: grid; grid-template-columns: 80px repeat(5, 1fr); gap: 1px; background-color: var(--border-color); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+            <div class="schedule-grid" id="mainScheduleGrid" style="display: grid; grid-template-columns: 75px repeat(5, 1fr); gap: 1px; background-color: var(--border-color); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
                 <!-- Header columns -->
-                <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Tiết</div>
+                <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 4px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Tiết</div>
                 <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Thứ Hai</div>
                 <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Thứ Ba</div>
                 <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Thứ Tư</div>
                 <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Thứ Năm</div>
                 <div class="schedule-header" style="background-color: #f8fafc; font-weight: 700; text-align: center; padding: 12px 6px; font-size: 0.85rem; color: #475569; border-bottom: 2px solid var(--border-color);">Thứ Sáu</div>
 
-                <!-- 10 Periods Grid Rows -->
+                <!-- 10 Periods Grid Rows (Populated by Server initially & Client dynamically) -->
                 @for (int period = 1; period <= 10; period++)
                 {
                     <!-- Period Number Cell -->
@@ -260,13 +299,17 @@
                     @for (int day = 2; day <= 6; day++)
                     {
                         var item = schedules?.FirstOrDefault(s => s.DayOfWeek == day && s.Period == period);
-                        <div class="schedule-cell" data-day="@day" data-period="@period" style="background-color: #ffffff; border-bottom: 1px solid var(--border-color); padding: 6px; height: 75px; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                        <div class="schedule-cell" data-day="@day" data-period="@period" style="background-color: #ffffff; border-bottom: 1px solid var(--border-color); padding: 4px; height: 75px; overflow: hidden; position: relative;">
                             @if (item != null)
                             {
-                                <div class="schedule-item" style="background-color: #e0e7ff; border-left: 4px solid var(--color-primary); padding: 4px 8px; border-radius: 4px; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
-                                    <div class="sub" style="font-weight: 700; color: #312e81; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@item.SubjectName</div>
-                                    <div class="teacher" style="color: #4338ca; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">GV: @item.TeacherName</div>
-                                    <div class="room" style="color: #6366f1; font-size: 0.7rem; font-weight: 500; text-align: right;"> @item.Room</div>
+                                <div class="schedule-item" data-id="@item.Id" data-subject-id="@item.SubjectId" data-subject-name="@item.SubjectName" data-teacher-id="@item.TeacherId" data-teacher-name="@item.TeacherName" data-day="@item.DayOfWeek" data-period="@item.Period" data-room="@item.Room" onclick="handleScheduleCellClick(event, '@item.Id')" style="background-color: #e0e7ff; border-left: 4px solid var(--color-primary); padding: 4px 6px; border-radius: 4px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; position: relative; cursor: pointer;">
+                                    <!-- Delete Button on Hover -->
+                                    <button type="button" class="delete-schedule-btn" onclick="onDeleteScheduleBtnClick(event, '@item.Id', '@item.SubjectName', '@item.TeacherName', @item.DayOfWeek, @item.Period)" title="Xóa tiết học này">
+                                        ✕
+                                    </button>
+                                    <div class="sub" style="font-weight: 700; color: #312e81; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 14px;">@item.SubjectName</div>
+                                    <div class="teacher" style="color: #4338ca; font-size: 0.73rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">GV: @item.TeacherName</div>
+                                    <div class="room" style="color: #6366f1; font-size: 0.68rem; font-weight: 600; text-align: right;"> @item.Room</div>
                                 </div>
                             }
                         </div>
@@ -275,38 +318,63 @@
             </div>
         </div>
 
-        <!-- Add Schedule Form (Right 30% - Sticky) -->
+        <!-- Add / Edit Schedule Form (Right 30% - Sticky) -->
         <div class="custom-card sticky-sidebar-panel" style="margin-bottom: 0;">
-            <h3>Thêm Tiết Học</h3>
-            <form id="createScheduleForm" asp-action="CreateSchedule" method="post" style="margin-top: 20px;">
-                <input type="hidden" name="classId" value="@classInfo?.Id" />
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                <div>
+                    <h3 id="scheduleFormTitle" style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a;">Thêm Tiết Học</h3>
+                    <p id="scheduleFormSubtitle" style="display: none; font-size: 0.8rem; color: #d97706; margin: 2px 0 0 0; font-weight: 600;"></p>
+                </div>
+                <button type="button" id="scheduleCancelBtn" class="btn btn-sm btn-secondary" onclick="cancelScheduleEdit()" style="display: none; padding: 4px 10px; font-size: 0.8rem; border-radius: 6px;">
+                    ✕ Hủy sửa
+                </button>
+            </div>
+            <p class="text-muted" style="font-size: 0.85rem; margin-top: 4px; margin-bottom: 16px; line-height: 1.4;">
+                Lưu ý: Hệ thống tự động chọn giáo viên theo phân công giảng dạy; tuy nhiên, có thể điều chỉnh giáo viên khác trong một số trường hợp cụ thể.
+            </p>
 
-                <div class="form-group">
-                    <label class="form-label">Chọn Môn học</label>
-                    <select id="scheduleSubjectSelect" name="SubjectId" class="form-control" required>
-                        <option value="">-- Chọn môn --</option>
-                        @foreach (var sub in allSubjects.Where(s => s.GradeLevel == classInfo.GradeLevel))
+            <form id="createScheduleForm" asp-action="CreateSchedule" method="post" style="margin-top: 10px;">
+                <input type="hidden" name="classId" value="@classInfo?.Id" />
+                <input type="hidden" name="id" id="editScheduleIdInput" value="" />
+
+                <!-- Môn học -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 4px;">
+                        Chọn Môn học <span class="text-danger">*</span>
+                    </label>
+                    <select id="scheduleSubjectSelect" name="SubjectId" class="form-control no-autocomplete" required style="border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;">
+                        <option value="">-- Chọn môn học --</option>
+                        @foreach (var sub in allSubjects.Where(s => classInfo != null && s.GradeLevel == classInfo.GradeLevel))
                         {
                             <option value="@sub.Id">@sub.Name (@sub.Code)</option>
                         }
                     </select>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Giáo viên phụ trách</label>
-                    <select id="scheduleTeacherSelect" name="TeacherId" class="form-control" required>
+                <!-- Giáo viên phụ trách (Auto-fill từ phân công) -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 0;">
+                            Giáo viên phụ trách <span class="text-danger">*</span>
+                        </label>
+                        <span id="teacherAutoSelectBadge" style="display: none; font-size: 0.72rem; background-color: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-weight: 600;">
+                             Phân công chuẩn
+                        </span>
+                    </div>
+                    <select id="scheduleTeacherSelect" name="TeacherId" class="form-control no-autocomplete" required style="border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;">
                         <option value="">-- Chọn giáo viên --</option>
                         @foreach (var t in allTeachers)
                         {
                             <option value="@t.Id">@t.FullName (@t.UserCode)</option>
                         }
                     </select>
+                    <div id="teacherNote" style="font-size: 0.76rem; color: #64748b; margin-top: 3px;">Tự động chọn GV từ phân công giảng dạy</div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div class="form-group">
-                        <label class="form-label">Thứ</label>
-                        <select id="scheduleDay" name="DayOfWeek" class="form-control" required>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 4px;">Thứ <span class="text-danger">*</span></label>
+                        <select id="scheduleDay" name="DayOfWeek" class="form-control no-autocomplete" required style="border-radius: 8px; padding: 8px 10px; font-size: 0.9rem;">
                             <option value="2">Thứ Hai</option>
                             <option value="3">Thứ Ba</option>
                             <option value="4">Thứ Tư</option>
@@ -314,9 +382,9 @@
                             <option value="6">Thứ Sáu</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Tiết học</label>
-                        <select id="schedulePeriod" name="Period" class="form-control" required>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 4px;">Tiết học <span class="text-danger">*</span></label>
+                        <select id="schedulePeriod" name="Period" class="form-control no-autocomplete" required style="border-radius: 8px; padding: 8px 10px; font-size: 0.9rem;">
                             @for (int p = 1; p <= 10; p++)
                             {
                                 <option value="@p">Tiết @p</option>
@@ -325,18 +393,71 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Phòng học</label>
-                    <input name="Room" class="form-control" placeholder="Ví dụ: Phòng 204" required />
+                <!-- Phòng học (Dropdown chuẩn hóa & gợi ý theo môn/lớp) -->
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 4px;">
+                        Phòng học <span class="text-danger">*</span>
+                    </label>
+                    <select id="scheduleRoomSelect" name="Room" class="form-control no-autocomplete" required style="border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;">
+                        <optgroup label="🏢 Phòng học lý thuyết">
+                            <option value="Phòng 101">Phòng 101 (Tầng 1 - Dãy A)</option>
+                            <option value="Phòng 102">Phòng 102 (Tầng 1 - Dãy A)</option>
+                            <option value="Phòng 103">Phòng 103 (Tầng 1 - Dãy A)</option>
+                            <option value="Phòng 104">Phòng 104 (Tầng 1 - Dãy A)</option>
+                            <option value="Phòng 201">Phòng 201 (Tầng 2 - Dãy A)</option>
+                            <option value="Phòng 202">Phòng 202 (Tầng 2 - Dãy A)</option>
+                            <option value="Phòng 203">Phòng 203 (Tầng 2 - Dãy A)</option>
+                            <option value="Phòng 204">Phòng 204 (Tầng 2 - Dãy A)</option>
+                            <option value="Phòng 301">Phòng 301 (Tầng 3 - Dãy B)</option>
+                            <option value="Phòng 302">Phòng 302 (Tầng 3 - Dãy B)</option>
+                            <option value="Phòng 303">Phòng 303 (Tầng 3 - Dãy B)</option>
+                            <option value="Phòng 304">Phòng 304 (Tầng 3 - Dãy B)</option>
+                        </optgroup>
+                        <optgroup label="🔬 Phòng chức năng & Thực hành">
+                            <option value="Phòng Tin Học 1">Phòng Tin Học 1 (Lab Máy Tính A)</option>
+                            <option value="Phòng Tin Học 2">Phòng Tin Học 2 (Lab Máy Tính B)</option>
+                            <option value="Phòng Lab Hóa - Sinh">Phòng Lab Hóa - Sinh</option>
+                            <option value="Phòng Lab Vật Lý">Phòng Lab Vật Lý</option>
+                            <option value="Nhà Đa Năng (Thể Dục)">Nhà Đa Năng (Thể Dục)</option>
+                            <option value="Sân Bóng Đá">Sân Bóng Đá Ngoài Trời</option>
+                        </optgroup>
+                    </select>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Năm học</label>
-                    <input name="SchoolYear" class="form-control" value="@classInfo?.SchoolYear" required readonly />
+                <div class="form-group" style="margin-bottom: 18px;">
+                    <label class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 4px;">Năm học</label>
+                    <input name="SchoolYear" class="form-control" value="@classInfo?.SchoolYear" required readonly style="background-color: #f1f5f9; border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;" />
                 </div>
 
-                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 10px; font-weight: 600;">Thêm Vào TKB</button>
+                <div style="display: flex; gap: 8px;">
+                    <button type="submit" id="scheduleSubmitBtn" class="btn btn-primary" style="flex: 1; padding: 12px; font-weight: 600; border-radius: 8px;">
+                         Thêm Vào TKB
+                    </button>
+                </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Xác Nhận Xóa 1 Tiết Học -->
+<div id="deleteScheduleModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header" style="background-color: #fee2e2; border-bottom: 1px solid #fca5a5;">
+            <h3 style="color: #991b1b; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                <span></span> Xác Nhận Xóa Tiết Học
+            </h3>
+            <button class="modal-close-btn" onclick="closeDeleteScheduleModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <p id="deleteScheduleConfirmText" style="font-size: 0.95rem; color: #334155; line-height: 1.5; margin-bottom: 16px;">
+                Bạn có chắc chắn muốn xóa tiết học này khỏi thời khóa biểu?
+            </p>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteScheduleModal()" style="padding: 8px 16px; border-radius: 6px;">Hủy bỏ</button>
+                <button type="button" id="confirmDeleteScheduleBtn" class="btn btn-danger" onclick="executeDeleteSchedule()" style="padding: 8px 18px; font-weight: 600; border-radius: 6px;">
+                    ️ Xóa tiết học
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -365,6 +486,58 @@
         border-bottom: 3px solid var(--color-primary) !important;
     }
     
+    /* Schedule Item & Hover Actions */
+    .schedule-item {
+        position: relative;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .schedule-item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25);
+    }
+    .schedule-item.is-editing {
+        border-left: 4px solid #f59e0b !important;
+        background-color: #fef3c7 !important;
+        box-shadow: 0 0 0 2px #f59e0b !important;
+    }
+    .schedule-item.is-editing .sub {
+        color: #92400e !important;
+    }
+    .schedule-item.is-editing .teacher {
+        color: #b45309 !important;
+    }
+    .delete-schedule-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 18px;
+        height: 18px;
+        background-color: #fee2e2;
+        color: #ef4444;
+        border: 1px solid #fca5a5;
+        border-radius: 4px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.68rem;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+        transition: all 0.15s ease;
+        z-index: 5;
+    }
+    .schedule-item:hover .delete-schedule-btn {
+        display: flex;
+    }
+    .delete-schedule-btn:hover {
+        background-color: #dc2626;
+        color: #ffffff;
+        border-color: #b91c1c;
+        transform: scale(1.1);
+    }
+
     /* Sticky sidebar panel */
     .sticky-sidebar-panel {
         position: -webkit-sticky;
@@ -648,11 +821,11 @@
                     <td>${formattedDate}</td>
                     <td>
                         <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="showDetail('${student.studentId}')" style="padding: 5px 10px; font-size: 0.8rem; border-color: #cbd5e1; background: #ffffff; color: #475569;">👁 Chi tiết</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="showDetail('${student.studentId}')" style="padding: 5px 10px; font-size: 0.8rem; border-color: #cbd5e1; background: #ffffff; color: #475569;"> Chi tiết</button>
                             <form action="/Admin/RemoveStudent" method="post" class="remove-student-form" data-student-id="${student.studentId}" style="margin: 0;">
                                 <input type="hidden" name="classId" value="${classId}" />
                                 <input type="hidden" name="studentId" value="${student.studentId}" />
-                                <button type="submit" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 0.8rem;">🗑 Xóa khỏi lớp</button>
+                                <button type="submit" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 0.8rem;"> Xóa khỏi lớp</button>
                             </form>
                         </div>
                     </td>
@@ -1000,7 +1173,7 @@
         }
     });
 
-    document.addEventListener("DOMContentLoaded", function () {
+    function initClassDetailPage() {
         const daySelect = document.getElementById("scheduleDay");
         const periodSelect = document.getElementById("schedulePeriod");
 
@@ -1046,13 +1219,14 @@
         }
 
         function isTeacherForSubject(teacher, subject) {
-            if (!teacher || !teacher.teacherProfile || !teacher.teacherProfile.specialization) return false;
-            if (!subject || !subject.name) return false;
+            if (!teacher || !teacher.teacherProfile || !teacher.teacherProfile.specialization) return true;
+            if (!subject || !subject.name) return true;
             
-            const spec = teacher.teacherProfile.specialization.toLowerCase();
-            const subName = subject.name.toLowerCase();
-            const normSpec = spec.replace(/học$/, "").trim();
-            return subName.includes(normSpec);
+            const spec = teacher.teacherProfile.specialization.toLowerCase().trim();
+            const subName = subject.name.toLowerCase().trim();
+            const normSpec = spec.replace(/học$/, "").replace(/hoc$/, "").trim();
+            const normSub = subName.replace(/học$/, "").replace(/hoc$/, "").trim();
+            return subName.includes(normSpec) || spec.includes(normSub) || normSub.includes(normSpec);
         }
 
         function handleSubjectChange(subjectSelectId, teacherSelectId) {
@@ -1123,47 +1297,11 @@
             assignTea.addEventListener("change", () => handleTeacherChange("assignSubjectSelect", "assignTeacherSelect"));
         }
 
-        const schedSub = document.getElementById("scheduleSubjectSelect");
-        const schedTea = document.getElementById("scheduleTeacherSelect");
-        if (schedSub && schedTea) {
-            schedSub.addEventListener("change", () => handleSubjectChange("scheduleSubjectSelect", "scheduleTeacherSelect"));
-            schedTea.addEventListener("change", () => handleTeacherChange("scheduleSubjectSelect", "scheduleTeacherSelect"));
-        }
-
         function showMessage(type, message) {
-            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert ${alertClass}`;
-            alertDiv.innerText = message;
-            
-            const mainContainer = document.querySelector('main[role="main"]');
-            if (mainContainer) {
-                mainContainer.insertBefore(alertDiv, mainContainer.firstChild);
-                setTimeout(() => alertDiv.remove(), 4000);
-            }
-        }
-
-        async function refreshStudentDropdown() {
-            const select = document.getElementById('studentSelect');
-            if (!select) return;
-            
-            try {
-                const response = await fetch('/Admin/GetEligibleStudentsJson');
-                const eligibleStudents = await response.json();
-                
-                select.innerHTML = '<option value="">-- Chọn học sinh --</option>';
-                eligibleStudents.forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s.id;
-                    opt.text = `${s.fullName} (${s.userCode})`;
-                    select.appendChild(opt);
-                });
-                
-                if (select.refreshAutocomplete) {
-                    select.refreshAutocomplete();
-                }
-            } catch (err) {
-                console.error('Error refreshing student dropdown:', err);
+            if (window.showToast) {
+                window.showToast(type, message);
+            } else {
+                alert(message);
             }
         }
 
@@ -1201,11 +1339,11 @@
                         <td>${formattedDate}</td>
                         <td>
                             <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="showDetail('${ta.teacherId}')" style="padding: 5px 10px; font-size: 0.8rem; border-color: #cbd5e1; background: #ffffff; color: #475569;">👁 Chi tiết</button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="showDetail('${ta.teacherId}')" style="padding: 5px 10px; font-size: 0.8rem; border-color: #cbd5e1; background: #ffffff; color: #475569;"> Chi tiết</button>
                                 <form action="/Admin/RemoveTeaching" method="post" class="remove-teaching-form" data-subject-id="${ta.subjectId}" style="margin: 0;">
                                     <input type="hidden" name="classId" value="${classId}" />
                                     <input type="hidden" name="subjectId" value="${ta.subjectId}" />
-                                    <button type="submit" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 0.8rem;">🗑 Xóa phân công</button>
+                                    <button type="submit" class="btn btn-danger btn-sm" style="padding: 5px 10px; font-size: 0.8rem;"> Xóa phân công</button>
                                 </form>
                             </div>
                         </td>
@@ -1247,7 +1385,10 @@
                 const cell = document.querySelector(`.schedule-cell[data-day="${item.dayOfWeek}"][data-period="${item.period}"]`);
                 if (cell) {
                     cell.innerHTML = `
-                        <div class="schedule-item" style="background-color: #e0e7ff; border-left: 4px solid var(--color-primary); padding: 4px 8px; border-radius: 4px; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div class="schedule-item" data-id="${item.id}" data-subject-id="${item.subjectId}" data-subject-name="${item.subjectName}" data-teacher-id="${item.teacherId}" data-teacher-name="${item.teacherName}" data-day="${item.dayOfWeek}" data-period="${item.period}" data-room="${item.room}" onclick="handleScheduleCellClick(event, '${item.id}')" style="background-color: #e0e7ff; border-left: 4px solid var(--color-primary); padding: 4px 6px; border-radius: 4px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; position: relative; cursor: pointer;">
+                            <button type="button" class="delete-schedule-btn" title="Xóa tiết học" onclick="confirmDeleteSchedule(event, '${item.id}')">
+                                <i class="fas fa-times"></i>
+                            </button>
                             <div class="sub" style="font-weight: 700; color: #312e81; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.subjectName}</div>
                             <div class="teacher" style="color: #4338ca; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">GV: ${item.teacherName}</div>
                             <div class="room" style="color: #6366f1; font-size: 0.7rem; font-weight: 500; text-align: right;"> ${item.room}</div>
@@ -1258,6 +1399,30 @@
             
             occupiedSlots = schedulesList.map(s => ({ day: s.dayOfWeek, period: s.period }));
             updatePeriodOptions();
+        }
+
+        async function refreshStudentDropdown() {
+            const studentSelect = document.getElementById("studentSelect");
+            if (!studentSelect) return;
+            try {
+                const resp = await fetch("/Admin/GetUnassignedStudentsJson");
+                if (resp.ok) {
+                    const list = await resp.json();
+                    studentSelect.innerHTML = '<option value="">-- Chọn học sinh --</option>';
+                    list.forEach(s => {
+                        const opt = document.createElement("option");
+                        opt.value = s.id;
+                        opt.textContent = `${s.fullName} (${s.userCode})`;
+                        studentSelect.appendChild(opt);
+                    });
+                    studentSelect.value = "";
+                    if (studentSelect.refreshAutocomplete) {
+                        studentSelect.refreshAutocomplete();
+                    }
+                }
+            } catch (e) {
+                console.warn("Could not refresh unassigned students dropdown", e);
+            }
         }
 
         // Wire AJAX forms
@@ -1281,14 +1446,21 @@
                     
                     if (result.success) {
                         showMessage('success', result.message);
-                        const studentsResp = await fetch(`/Admin/GetClassStudentsJson/${classId}`);
-                        const studentsList = await studentsResp.json();
-                        rebuildStudentTable(studentsList);
+                        try {
+                            const studentsResp = await fetch(`/Admin/GetClassStudentsJson/${classId}`);
+                            if (studentsResp.ok) {
+                                const studentsList = await studentsResp.json();
+                                rebuildStudentTable(studentsList);
+                            }
+                        } catch (rebuildErr) {
+                            console.warn("Could not refresh student table dynamically", rebuildErr);
+                        }
                         await refreshStudentDropdown();
                     } else {
-                        showMessage('error', result.message);
+                        showMessage('error', result.message || 'Không thể thêm học sinh vào lớp.');
                     }
                 } catch (err) {
+                    console.error("Assign student error:", err);
                     showMessage('error', 'Lỗi kết nối đến máy chủ.');
                 } finally {
                     if (submitBtn) {
@@ -1325,22 +1497,29 @@
                         
                         if (result.success) {
                             showMessage('success', result.message);
-                            const studentsResp = await fetch(`/Admin/GetClassStudentsJson/${classId}`);
-                            const studentsList = await studentsResp.json();
-                            rebuildStudentTable(studentsList);
+                            try {
+                                const studentsResp = await fetch(`/Admin/GetClassStudentsJson/${classId}`);
+                                if (studentsResp.ok) {
+                                    const studentsList = await studentsResp.json();
+                                    rebuildStudentTable(studentsList);
+                                }
+                            } catch (rebuildErr) {
+                                console.warn("Could not refresh student table dynamically", rebuildErr);
+                            }
                             await refreshStudentDropdown();
                         } else {
-                            showMessage('error', result.message);
+                            showMessage('error', result.message || 'Không thể xóa học sinh khỏi lớp.');
                             if (submitBtn) {
                                 submitBtn.disabled = false;
-                                submitBtn.innerText = '🗑 Xóa khỏi lớp';
+                                submitBtn.innerText = ' Xóa khỏi lớp';
                             }
                         }
                     } catch (err) {
+                        console.error("Remove student error:", err);
                         showMessage('error', 'Lỗi kết nối đến máy chủ.');
                         if (submitBtn) {
                             submitBtn.disabled = false;
-                            submitBtn.innerText = '🗑 Xóa khỏi lớp';
+                            submitBtn.innerText = ' Xóa khỏi lớp';
                         }
                     }
                 });
@@ -1373,21 +1552,28 @@
                         
                         if (result.success) {
                             showMessage('success', result.message);
-                            const teachingResp = await fetch(`/Admin/GetClassTeachersJson/${classId}`);
-                            const teachingList = await teachingResp.json();
-                            rebuildTeachingTable(teachingList);
+                            try {
+                                const teachingResp = await fetch(`/Admin/GetClassTeachersJson/${classId}`);
+                                if (teachingResp.ok) {
+                                    const teachingList = await teachingResp.json();
+                                    rebuildTeachingTable(teachingList);
+                                }
+                            } catch (rebuildErr) {
+                                console.warn("Could not refresh teaching table dynamically", rebuildErr);
+                            }
                         } else {
-                            showMessage('error', result.message);
+                            showMessage('error', result.message || 'Không thể xóa phân công giảng dạy.');
                             if (submitBtn) {
                                 submitBtn.disabled = false;
-                                submitBtn.innerText = '🗑 Xóa phân công';
+                                submitBtn.innerText = ' Xóa phân công';
                             }
                         }
                     } catch (err) {
+                        console.error("Remove teaching error:", err);
                         showMessage('error', 'Lỗi kết nối đến máy chủ.');
                         if (submitBtn) {
                             submitBtn.disabled = false;
-                            submitBtn.innerText = '🗑 Xóa phân công';
+                            submitBtn.innerText = ' Xóa phân công';
                         }
                     }
                 });
@@ -1414,37 +1600,43 @@
                     
                     if (result.success) {
                         showMessage('success', result.message);
-                        const homeroomResp = await fetch(`/Admin/GetClassHomeroomJson/${classId}`);
-                        const homeroomData = await homeroomResp.json();
-                        
-                        const container = document.getElementById('homeroomTeacherContainer');
-                        if (container && homeroomData.success && homeroomData.homeroom) {
-                            const hr = homeroomData.homeroom;
-                            const firstChar = hr.teacherName ? hr.teacherName[0].toUpperCase() : '?';
-                            container.innerHTML = `
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="avatar-placeholder" style="width: 42px; height: 42px; background-color: #d1fae5; color: var(--color-success); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem;">
-                                        ${firstChar}
-                                    </div>
-                                    <div>
-                                        <div class="text-muted" style="font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px;">GIÁO VIÊN CHỦ NHIỆM</div>
-                                        <div class="fw-bold" style="color: #0f172a; font-size: 0.95rem;">${hr.teacherName}</div>
-                                        <div class="text-muted" style="font-size: 0.8rem;">Mã GV: ${hr.teacherCode}</div>
-                                    </div>
-                                </div>
-                            `;
-                        } else if (container) {
-                            container.innerHTML = `
-                                <div>
-                                    <div class="text-muted" style="font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px;">GIÁO VIÊN CHỦ NHIỆM</div>
-                                    <div class="text-muted" style="font-size: 0.9rem; font-style: italic;">Chưa phân công</div>
-                                </div>
-                            `;
+                        try {
+                            const homeroomResp = await fetch(`/Admin/GetClassHomeroomJson/${classId}`);
+                            if (homeroomResp.ok) {
+                                const homeroomData = await homeroomResp.json();
+                                const container = document.getElementById('homeroomTeacherContainer');
+                                if (container && homeroomData.success && homeroomData.homeroom) {
+                                    const hr = homeroomData.homeroom;
+                                    const firstChar = hr.teacherName ? hr.teacherName[0].toUpperCase() : '?';
+                                    container.innerHTML = `
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <div class="avatar-placeholder" style="width: 42px; height: 42px; background-color: #d1fae5; color: var(--color-success); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem;">
+                                                ${firstChar}
+                                            </div>
+                                            <div>
+                                                <div class="text-muted" style="font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px;">GIÁO VIÊN CHỦ NHIỆM</div>
+                                                <div class="fw-bold" style="color: #0f172a; font-size: 0.95rem;">${hr.teacherName}</div>
+                                                <div class="text-muted" style="font-size: 0.8rem;">Mã GV: ${hr.teacherCode}</div>
+                                            </div>
+                                        </div>
+                                    `;
+                                } else if (container) {
+                                    container.innerHTML = `
+                                        <div>
+                                            <div class="text-muted" style="font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px;">GIÁO VIÊN CHỦ NHIỆM</div>
+                                            <div class="text-muted" style="font-size: 0.9rem; font-style: italic;">Chưa phân công</div>
+                                        </div>
+                                    `;
+                                }
+                            }
+                        } catch (rebuildErr) {
+                            console.warn("Could not refresh homeroom info dynamically", rebuildErr);
                         }
                     } else {
-                        showMessage('error', result.message);
+                        showMessage('error', result.message || 'Không thể phân công GVCN.');
                     }
                 } catch (err) {
+                    console.error("Assign homeroom error:", err);
                     showMessage('error', 'Lỗi kết nối đến máy chủ.');
                 } finally {
                     if (submitBtn) {
@@ -1475,9 +1667,15 @@
                     
                     if (result.success) {
                         showMessage('success', result.message);
-                        const teachingResp = await fetch(`/Admin/GetClassTeachersJson/${classId}`);
-                        const teachingList = await teachingResp.json();
-                        rebuildTeachingTable(teachingList);
+                        try {
+                            const teachingResp = await fetch(`/Admin/GetClassTeachersJson/${classId}`);
+                            if (teachingResp.ok) {
+                                const teachingList = await teachingResp.json();
+                                rebuildTeachingTable(teachingList);
+                            }
+                        } catch (rebuildErr) {
+                            console.warn("Could not refresh teaching table dynamically", rebuildErr);
+                        }
                         
                         const subjectSelect = document.getElementById('assignSubjectSelect');
                         const teacherSelect = document.getElementById('assignTeacherSelect');
@@ -1486,9 +1684,10 @@
                         if (subjectSelect && subjectSelect.refreshAutocomplete) subjectSelect.refreshAutocomplete();
                         if (teacherSelect && teacherSelect.refreshAutocomplete) teacherSelect.refreshAutocomplete();
                     } else {
-                        showMessage('error', result.message);
+                        showMessage('error', result.message || 'Không thể phân công giảng dạy.');
                     }
                 } catch (err) {
+                    console.error("Assign teaching error:", err);
                     showMessage('error', 'Lỗi kết nối đến máy chủ.');
                 } finally {
                     if (submitBtn) {
@@ -1499,31 +1698,322 @@
             });
         }
 
+        // ========================================================
+        // SCHEDULE / TIMETABLE LOGIC
+        // ========================================================
+        let currentSchedules = @Html.Raw(Json.Serialize(schedules)) || [];
+        let classAssignments = @Html.Raw(Json.Serialize(teachingAssignments)) || [];
+        const className = "@(classInfo?.Name ?? "")";
+        const schoolYear = "@(classInfo?.SchoolYear ?? "2025-2026")";
+        let editingScheduleId = null;
+        let deleteScheduleTargetId = null;
+        function getDayName(day) {
+            switch(parseInt(day, 10)) {
+                case 2: return "Thứ Hai";
+                case 3: return "Thứ Ba";
+                case 4: return "Thứ Tư";
+                case 5: return "Thứ Năm";
+                case 6: return "Thứ Sáu";
+                default: return `Thứ ${day}`;
+            }
+        }
+
+        // 1. Rebuild Schedule Grid HTML
+        window.rebuildScheduleGrid = function(schedulesList) {
+            currentSchedules = schedulesList || [];
+            
+            for (let period = 1; period <= 10; period++) {
+                for (let day = 2; day <= 6; day++) {
+                    const cell = document.querySelector(`.schedule-cell[data-day="${day}"][data-period="${period}"]`);
+                    if (!cell) continue;
+
+                    const item = currentSchedules.find(s => s.dayOfWeek === day && s.period === period);
+                    if (item) {
+                        const isEditing = editingScheduleId === item.id;
+                        cell.innerHTML = `
+                            <div class="schedule-item ${isEditing ? 'is-editing' : ''}" 
+                                 data-id="${item.id}" 
+                                 data-subject-id="${item.subjectId}" 
+                                 data-subject-name="${item.subjectName}" 
+                                 data-teacher-id="${item.teacherId}" 
+                                 data-teacher-name="${item.teacherName}" 
+                                 data-day="${item.dayOfWeek}" 
+                                 data-period="${item.period}" 
+                                 data-room="${item.room}"
+                                 onclick="handleScheduleCellClick(event, '${item.id}')"
+                                 style="background-color: #e0e7ff; border-left: 4px solid var(--color-primary); padding: 4px 6px; border-radius: 4px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; position: relative; cursor: pointer;">
+                                <button type="button" class="delete-schedule-btn" onclick="onDeleteScheduleBtnClick(event, '${item.id}', '${item.subjectName}', '${item.teacherName}', ${item.dayOfWeek}, ${item.period})" title="Xóa tiết học này">
+                                    ✕
+                                </button>
+                                <div class="sub" style="font-weight: 700; color: #312e81; font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 14px;">${item.subjectName}</div>
+                                <div class="teacher" style="color: #4338ca; font-size: 0.73rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">GV: ${item.teacherName}</div>
+                                <div class="room" style="color: #6366f1; font-size: 0.68rem; font-weight: 600; text-align: right;"> ${item.room}</div>
+                            </div>
+                        `;
+                    } else {
+                        cell.innerHTML = '';
+                    }
+                }
+            }
+        };
+
+        // 3. Subject Select Change: Auto-select teacher & suggest room
+        const scheduleSubjectSelect = document.getElementById('scheduleSubjectSelect');
+        if (scheduleSubjectSelect) {
+            scheduleSubjectSelect.addEventListener('change', function () {
+                const selectedSubId = this.value;
+                const teacherSelect = document.getElementById('scheduleTeacherSelect');
+                const autoBadge = document.getElementById('teacherAutoSelectBadge');
+                const roomSelect = document.getElementById('scheduleRoomSelect');
+
+                if (!selectedSubId) {
+                    if (autoBadge) autoBadge.style.display = 'none';
+                    return;
+                }
+
+                // Check Teaching Assignments
+                const assigned = classAssignments.find(a => a.subjectId.toLowerCase() === selectedSubId.toLowerCase());
+                if (assigned && teacherSelect) {
+                    teacherSelect.value = assigned.teacherId;
+                    if (autoBadge) {
+                        autoBadge.style.display = 'inline-block';
+                        autoBadge.innerText = ` Phân công: ${assigned.teacherName}`;
+                    }
+                } else {
+                    if (autoBadge) autoBadge.style.display = 'none';
+                }
+
+                // Suggest Room based on subject
+                const opt = this.options[this.selectedIndex];
+                const subjectName = (opt ? (opt.dataset.baseName || opt.text) : '').toLowerCase();
+
+                if (roomSelect) {
+                    if (subjectName.includes('tin học') || subjectName.includes('tin')) {
+                        roomSelect.value = 'Phòng Tin Học 1';
+                    } else if (subjectName.includes('thể dục') || subjectName.includes('thể chất')) {
+                        roomSelect.value = 'Nhà Đa Năng (Thể Dục)';
+                    } else if (subjectName.includes('hóa') || subjectName.includes('sinh')) {
+                        roomSelect.value = 'Phòng Lab Hóa - Sinh';
+                    } else if (subjectName.includes('vật lý') || subjectName.includes('vật lí')) {
+                        roomSelect.value = 'Phòng Lab Vật Lý';
+                    } else {
+                        // Default classroom based on class name (e.g. 10A1 -> Phòng 101, 10A2 -> Phòng 102)
+                        const defaultRoom = className.includes('10A1') ? 'Phòng 101' :
+                                           (className.includes('10A2') ? 'Phòng 102' :
+                                           (className.includes('10A3') ? 'Phòng 103' :
+                                           (className.includes('11A1') ? 'Phòng 201' :
+                                           (className.includes('11A2') ? 'Phòng 202' :
+                                           (className.includes('12A1') ? 'Phòng 301' : 'Phòng 101')))));
+                        if (roomSelect.querySelector(`option[value="${defaultRoom}"]`)) {
+                            roomSelect.value = defaultRoom;
+                        }
+                    }
+                }
+            });
+        }
+
+        // 4. Click on a Timetable Cell -> Switch Form to Edit Mode
+        window.handleScheduleCellClick = function(e, scheduleId) {
+            const item = currentSchedules.find(s => s.id === scheduleId);
+            if (!item) return;
+
+            editingScheduleId = scheduleId;
+
+            // Highlight in grid
+            document.querySelectorAll('.schedule-item').forEach(el => el.classList.remove('is-editing'));
+            const targetEl = document.querySelector(`.schedule-item[data-id="${scheduleId}"]`);
+            if (targetEl) targetEl.classList.add('is-editing');
+
+            // Populate Form
+            document.getElementById('editScheduleIdInput').value = item.id;
+            document.getElementById('scheduleSubjectSelect').value = item.subjectId;
+            document.getElementById('scheduleTeacherSelect').value = item.teacherId;
+            document.getElementById('scheduleDay').value = item.dayOfWeek;
+            document.getElementById('schedulePeriod').value = item.period;
+            
+            const roomSelect = document.getElementById('scheduleRoomSelect');
+            if (roomSelect) roomSelect.value = item.room;
+
+            // Update Form UI
+            document.getElementById('scheduleFormTitle').innerText = ' Sửa Tiết Học';
+            const subtitle = document.getElementById('scheduleFormSubtitle');
+            if (subtitle) {
+                subtitle.style.display = 'block';
+                subtitle.innerText = `Đang chỉnh sửa Tiết ${item.period} (${getDayName(item.dayOfWeek)})`;
+            }
+
+            const submitBtn = document.getElementById('scheduleSubmitBtn');
+            if (submitBtn) {
+                submitBtn.innerHTML = ' Cập Nhật TKB';
+                submitBtn.className = 'btn btn-warning';
+                submitBtn.style.backgroundColor = '#f59e0b';
+                submitBtn.style.borderColor = '#d97706';
+                submitBtn.style.color = '#ffffff';
+            }
+
+            const cancelBtn = document.getElementById('scheduleCancelBtn');
+            if (cancelBtn) cancelBtn.style.display = 'inline-block';
+
+            // Check if teacher is standard assignment
+            const assigned = classAssignments.find(a => a.subjectId.toLowerCase() === item.subjectId.toLowerCase());
+            const autoBadge = document.getElementById('teacherAutoSelectBadge');
+            if (assigned && autoBadge && assigned.teacherId.toLowerCase() === item.teacherId.toLowerCase()) {
+                autoBadge.style.display = 'inline-block';
+                autoBadge.innerText = ` Phân công: ${assigned.teacherName}`;
+            } else if (autoBadge) {
+                autoBadge.style.display = 'none';
+            }
+        };
+
+        // 5. Cancel Edit Mode
+        window.cancelScheduleEdit = function() {
+            editingScheduleId = null;
+
+            document.querySelectorAll('.schedule-item').forEach(el => el.classList.remove('is-editing'));
+
+            document.getElementById('editScheduleIdInput').value = '';
+            document.getElementById('scheduleSubjectSelect').value = '';
+            document.getElementById('scheduleTeacherSelect').value = '';
+            document.getElementById('scheduleDay').value = '2';
+            document.getElementById('schedulePeriod').value = '1';
+
+            const autoBadge = document.getElementById('teacherAutoSelectBadge');
+            if (autoBadge) autoBadge.style.display = 'none';
+
+            document.getElementById('scheduleFormTitle').innerText = 'Thêm Tiết Học';
+            const subtitle = document.getElementById('scheduleFormSubtitle');
+            if (subtitle) subtitle.style.display = 'none';
+
+            const submitBtn = document.getElementById('scheduleSubmitBtn');
+            if (submitBtn) {
+                submitBtn.innerHTML = ' Thêm Vào TKB';
+                submitBtn.className = 'btn btn-primary';
+                submitBtn.style.backgroundColor = '';
+                submitBtn.style.borderColor = '';
+                submitBtn.style.color = '';
+            }
+
+            const cancelBtn = document.getElementById('scheduleCancelBtn');
+            if (cancelBtn) cancelBtn.style.display = 'none';
+        };
+
+        // 6. Delete Single Schedule Cell
+        window.onDeleteScheduleBtnClick = function(e, id, subjectName, teacherName, day, period) {
+            e.stopPropagation(); // Don't trigger cell edit
+            deleteScheduleTargetId = id;
+
+            const textEl = document.getElementById('deleteScheduleConfirmText');
+            if (textEl) {
+                textEl.innerHTML = `Bạn có chắc chắn muốn xóa tiết <strong>${subjectName}</strong> của giáo viên <strong>${teacherName}</strong> khỏi <strong>Tiết ${period} (${getDayName(day)})</strong> không?`;
+            }
+
+            const modal = document.getElementById('deleteScheduleModal');
+            if (modal) modal.style.display = 'flex';
+        };
+
+        window.closeDeleteScheduleModal = function() {
+            deleteScheduleTargetId = null;
+            const modal = document.getElementById('deleteScheduleModal');
+            if (modal) modal.style.display = 'none';
+        };
+
+        window.executeDeleteSchedule = async function() {
+            if (!deleteScheduleTargetId) return;
+
+            const btn = document.getElementById('confirmDeleteScheduleBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Đang xóa...';
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('id', deleteScheduleTargetId);
+                formData.append('classId', classId);
+
+                const response = await fetch(`/Admin/DeleteSchedule`, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('success', result.message);
+                    closeDeleteScheduleModal();
+                    if (editingScheduleId === deleteScheduleTargetId) {
+                        cancelScheduleEdit();
+                    }
+                    try {
+                        const schedulesResp = await fetch(`/Admin/GetClassScheduleJson/${classId}`);
+                        if (schedulesResp.ok) {
+                            const schedulesList = await schedulesResp.json();
+                            rebuildScheduleGrid(schedulesList);
+                        }
+                    } catch (rebuildErr) {
+                        console.warn("Could not refresh schedule grid dynamically", rebuildErr);
+                    }
+                } else {
+                    showMessage('error', result.message || 'Không thể xóa tiết học.');
+                }
+            } catch (err) {
+                console.error("Delete schedule error:", err);
+                showMessage('error', 'Lỗi kết nối đến máy chủ khi xóa tiết học.');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '️ Xóa tiết học';
+                }
+            }
+        };
+
+        // 7. Create / Update Schedule Form Submission
         const createScheduleForm = document.getElementById("createScheduleForm");
         if (createScheduleForm) {
             createScheduleForm.addEventListener("submit", async function (e) {
                 e.preventDefault();
+                const submitBtn = document.getElementById('scheduleSubmitBtn');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerText = editingScheduleId ? 'Đang cập nhật...' : 'Đang thêm...';
+                }
+
                 const formData = new FormData(createScheduleForm);
+                const actionUrl = editingScheduleId 
+                    ? `/Admin/UpdateSchedule?id=${editingScheduleId}&classId=${classId}` 
+                    : `/Admin/CreateSchedule?classId=${classId}`;
+
                 try {
-                    const response = await fetch(createScheduleForm.action, {
+                    const response = await fetch(actionUrl, {
                         method: 'POST',
                         headers: { 'X-Requested-With': 'XMLHttpRequest' },
                         body: formData
                     });
                     const result = await response.json();
-                    
+
                     if (result.success) {
                         showMessage('success', result.message);
-                        const roomInput = createScheduleForm.querySelector('input[name="Room"]');
-                        if (roomInput) roomInput.value = '';
-                        const schedulesResp = await fetch(`/Admin/GetClassScheduleJson/${classId}`);
-                        const schedulesList = await schedulesResp.json();
-                        rebuildScheduleGrid(schedulesList);
+                        cancelScheduleEdit();
+                        try {
+                            const schedulesResp = await fetch(`/Admin/GetClassScheduleJson/${classId}`);
+                            if (schedulesResp.ok) {
+                                const schedulesList = await schedulesResp.json();
+                                rebuildScheduleGrid(schedulesList);
+                            }
+                        } catch (rebuildErr) {
+                            console.warn("Could not refresh schedule grid dynamically", rebuildErr);
+                        }
                     } else {
-                        showMessage('error', result.message);
+                        showMessage('error', result.message || 'Không thể cập nhật thời khóa biểu.');
                     }
                 } catch (err) {
+                    console.error("Save schedule error:", err);
                     showMessage('error', 'Lỗi kết nối đến máy chủ.');
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = editingScheduleId ? ' Cập Nhật TKB' : ' Thêm Vào TKB';
+                    }
                 }
             });
         }
@@ -1532,6 +2022,13 @@
         updateStudentsView();
         
         const initialAssignments = @Html.Raw(Json.Serialize(teachingAssignments)) || [];
+        classAssignments = initialAssignments;
         rebuildTeachingTable(initialAssignments);
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initClassDetailPage);
+    } else {
+        initClassDetailPage();
+    }
 </script>

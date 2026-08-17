@@ -27,9 +27,15 @@ public class SubjectRepository : ISubjectRepository
         return await _db.Subjects.FindAsync(id);
     }
 
-    public async Task<Subject?> GetSubjectByCodeAsync(string code)
+    public async Task<Subject?> GetSubjectByCodeAsync(string code, Guid? excludeId = null)
     {
-        return await _db.Subjects.FirstOrDefaultAsync(s => s.Code == code);
+        var normalized = code.Trim().ToUpper();
+        var query = _db.Subjects.Where(s => s.Code.ToUpper() == normalized);
+        if (excludeId.HasValue)
+        {
+            query = query.Where(s => s.Id != excludeId.Value);
+        }
+        return await query.FirstOrDefaultAsync();
     }
 
     public async Task<Subject> CreateSubjectAsync(Subject subject)

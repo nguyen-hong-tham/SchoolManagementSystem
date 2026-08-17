@@ -38,6 +38,7 @@ public class SubjectService : ISubjectService
                 Name = s.Name,
                 Description = s.Description,
                 GradeLevel = s.GradeLevel,
+                IsActive = s.IsActive,
                 CreatedAt = s.CreatedAt,
             })
             .ToList();
@@ -58,26 +59,37 @@ public class SubjectService : ISubjectService
             Name = subject.Name,
             Description = subject.Description,
             GradeLevel = subject.GradeLevel,
+            IsActive = subject.IsActive,
             CreatedAt = subject.CreatedAt,
         };
     }
 
+    public async Task<bool> CheckCodeExistsAsync(string code, Guid? excludeId = null)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return false;
+        var existing = await _subjectRepository.GetSubjectByCodeAsync(code, excludeId);
+        return existing != null;
+    }
+
     public async Task<SubjectResponse> CreateSubjectAsync(CreateSubjectRequest request)
     {
+        var normalizedCode = request.Code.Trim().ToUpper();
+
         // Kiểm tra trùng mã môn học (Business Logic)
-        var exists = await _subjectRepository.GetSubjectByCodeAsync(request.Code);
+        var exists = await _subjectRepository.GetSubjectByCodeAsync(normalizedCode);
         if (exists != null)
         {
-            throw new InvalidOperationException("Môn học đã tồn tại");
+            throw new InvalidOperationException($"Mã môn học '{normalizedCode}' đã tồn tại trong hệ thống. Vui lòng chọn mã khác.");
         }
 
         var subject = new Subject
         {
             Id = Guid.NewGuid(),
-            Code = request.Code.ToUpper(),
-            Name = request.Name,
-            Description = request.Description,
+            Code = normalizedCode,
+            Name = request.Name.Trim(),
+            Description = request.Description?.Trim() ?? string.Empty,
             GradeLevel = request.GradeLevel,
+            IsActive = request.IsActive,
             CreatedAt = DateTime.UtcNow,
         };
 
@@ -112,6 +124,7 @@ public class SubjectService : ISubjectService
             Name = subject.Name,
             Description = subject.Description,
             GradeLevel = subject.GradeLevel,
+            IsActive = subject.IsActive,
             CreatedAt = subject.CreatedAt,
         };
     }
@@ -124,9 +137,10 @@ public class SubjectService : ISubjectService
             throw new KeyNotFoundException($"Không tìm thấy môn học với Id: {id}");
         }
 
-        subject.Name = request.Name;
-        subject.Description = request.Description;
+        subject.Name = request.Name.Trim();
+        subject.Description = request.Description?.Trim() ?? string.Empty;
         subject.GradeLevel = request.GradeLevel;
+        subject.IsActive = request.IsActive;
 
         await _subjectRepository.UpdateSubjectAsync(subject);
         await _subjectRepository.SaveChangesAsync();
@@ -159,6 +173,31 @@ public class SubjectService : ISubjectService
             Name = subject.Name,
             Description = subject.Description,
             GradeLevel = subject.GradeLevel,
+            IsActive = subject.IsActive,
+            CreatedAt = subject.CreatedAt,
+        };
+    }
+
+    public async Task<SubjectResponse> ToggleStatusAsync(Guid id)
+    {
+        var subject = await _subjectRepository.GetSubjectByIdAsync(id);
+        if (subject == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy môn học với Id: {id}");
+        }
+
+        subject.IsActive = !subject.IsActive;
+        await _subjectRepository.UpdateSubjectAsync(subject);
+        await _subjectRepository.SaveChangesAsync();
+
+        return new SubjectResponse
+        {
+            Id = subject.Id,
+            Code = subject.Code,
+            Name = subject.Name,
+            Description = subject.Description,
+            GradeLevel = subject.GradeLevel,
+            IsActive = subject.IsActive,
             CreatedAt = subject.CreatedAt,
         };
     }

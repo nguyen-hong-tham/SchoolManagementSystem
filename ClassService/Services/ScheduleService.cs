@@ -40,7 +40,9 @@ public class ScheduleService : IScheduleService
             dto.TeacherId, dto.DayOfWeek, dto.Period, dto.SchoolYear);
         if (teacherCollision != null)
         {
-            throw new InvalidOperationException("Giáo viên này đã có lịch dạy ở lớp học khác vào thời gian này.");
+            var teacher = await _dbContext.CachedUsers.FirstOrDefaultAsync(u => u.Id == dto.TeacherId);
+            var otherClass = await _classRepository.GetByIdAsync(teacherCollision.ClassId);
+            throw new InvalidOperationException($"Giáo viên {teacher?.FullName ?? "này"} đã có lịch dạy tại lớp {otherClass?.Name ?? "khác"} vào Tiết {dto.Period} Thứ {dto.DayOfWeek}.");
         }
 
         // 2. Kiểm tra va chạm Phòng học
@@ -48,7 +50,8 @@ public class ScheduleService : IScheduleService
             dto.Room, dto.DayOfWeek, dto.Period, dto.SchoolYear);
         if (roomCollision != null)
         {
-            throw new InvalidOperationException("Phòng học này đã được sử dụng bởi lớp khác vào thời gian này.");
+            var otherClass = await _classRepository.GetByIdAsync(roomCollision.ClassId);
+            throw new InvalidOperationException($"Phòng học {dto.Room} đã được sử dụng bởi lớp {otherClass?.Name ?? "khác"} vào Tiết {dto.Period} Thứ {dto.DayOfWeek}.");
         }
 
         // 3. Kiểm tra va chạm lịch của chính Lớp học đó
@@ -56,7 +59,8 @@ public class ScheduleService : IScheduleService
             dto.ClassId, dto.DayOfWeek, dto.Period, dto.SchoolYear);
         if (classCollision != null)
         {
-            throw new InvalidOperationException("Lớp học này đã có môn học khác được xếp lịch vào thời gian này.");
+            var sub = await _dbContext.CachedSubjects.FirstOrDefaultAsync(s => s.Id == classCollision.SubjectId);
+            throw new InvalidOperationException($"Lớp học này đã có môn {sub?.Name ?? "học khác"} vào Tiết {dto.Period} Thứ {dto.DayOfWeek}.");
         }
 
         var entity = new Schedule
@@ -75,6 +79,92 @@ public class ScheduleService : IScheduleService
         await _scheduleRepository.SaveChangesAsync();
 
         return await MapToResponseDtoAsync(entity);
+    }
+
+    public async Task<ScheduleResponseDto> UpdateScheduleAsync(Guid id, UpdateScheduleDto dto)
+    {
+        var existing = await _scheduleRepository.GetByIdAsync(id);
+        if (existing == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy tiết học thời khóa biểu với ID: {id}");
+        }
+
+        var targetClass = await _classRepository.GetByIdAsync(existing.ClassId);
+        if (targetClass == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy lớp học với ID: {existing.ClassId}");
+        }
+
+        var schoolYear = string.IsNullOrEmpty(dto.SchoolYear) ? existing.SchoolYear : dto.SchoolYear;
+
+        // 1. Kiểm tra va chạm lịch dạy của Giáo viên (loại trừ chính tiết này)
+        var teacherCollision = await _scheduleRepository.CheckTeacherCollisionAsync(
+            dto.TeacherId, dto.DayOfWeek, dto.Period, schoolYear, id);
+        if (teacherCollision != null)
+        {
+            var teacher = await _dbContext.CachedUsers.FirstOrDefaultAsync(u => u.Id == dto.TeacherId);
+            var otherClass = await _classRepository.GetByIdAsync(teacherCollision.ClassId);
+            throw new InvalidOperationException($"Giáo viên {teacher?.FullName ?? "này"} đã có lịch dạy tại lớp {otherClass?.Name ?? "khác"} vào Tiết {dto.Period} Thứ {dto.DayOfWeek}.");
+        }
+
+        // 2. Kiểm tra va chạm Phòng học (loại trừ chính tiết này)
+        var roomCollision = await _scheduleRepository.CheckRoomCollisionAsync(
+            dto.Room, dto.DayOfWeek, dto.Period, schoolYear, id);
+        if (roomCollision != null)
+        {
+            var otherClass = await _classRepository.GetByIdAsync(roomCollision.ClassId);
+            throw new InvalidOperationException($"Phòng học {dto.Room} đã được sử dụng bởi lớp {otherClass?.Name ?? "khác"} vào Tiết {dto.Period} Thứ {dto.DayOfWeek}.");
+        }
+
+        // 3. Kiểm tra va chạm lịch của chính Lớp học đó (loại trừ chính tiết này)
+        var classCollision = await _scheduleRepository.CheckClassCollisionAsync(
+            existing.ClassId, dto.DayOfWeek, dto.Period, schoolYear, id);
+        if (classCollision != null)
+        {
+            var sub = await _dbContext.CachedSubjects.FirstOrDefaultAsync(s => s.Id == classCollision.SubjectId);
+            throw new InvalidOperationException($"Lớp học này đã có môn {sub?.Name ?? "học khác"} vào Tiết {dto.Period} Thứ {dto.DayOfWeek}.");
+        }
+
+        // Cập nhật thông tin
+        existing.SubjectId = dto.SubjectId;
+        existing.TeacherId = dto.TeacherId;
+        existing.DayOfWeek = dto.DayOfWeek;
+        existing.Period = dto.Period;
+        existing.Room = dto.Room;
+        existing.SchoolYear = schoolYear;
+
+        await _scheduleRepository.SaveChangesAsync();
+
+        return await MapToResponseDtoAsync(existing);
+    }
+
+    public async Task DeleteScheduleAsync(Guid id)
+    {
+        var existing = await _scheduleRepository.GetByIdAsync(id);
+        if (existing == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy tiết học với ID: {id}");
+        }
+
+        _scheduleRepository.Delete(existing);
+        await _scheduleRepository.SaveChangesAsync();
+    }
+
+    public async Task ClearClassScheduleAsync(Guid classId, string? schoolYear)
+    {
+        var targetClass = await _classRepository.GetByIdAsync(classId);
+        if (targetClass == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy lớp học với ID: {classId}");
+        }
+
+        if (string.IsNullOrEmpty(schoolYear))
+        {
+            schoolYear = targetClass.SchoolYear;
+        }
+
+        await _scheduleRepository.ClearClassScheduleAsync(classId, schoolYear);
+        await _scheduleRepository.SaveChangesAsync();
     }
 
     public async Task<IEnumerable<ScheduleResponseDto>> GetClassScheduleAsync(Guid classId, string? schoolYear)
@@ -105,6 +195,7 @@ public class ScheduleService : IScheduleService
             {
                 Id = entity.Id,
                 ClassId = entity.ClassId,
+                ClassName = targetClass.Name,
                 SubjectId = entity.SubjectId,
                 TeacherId = entity.TeacherId,
                 DayOfWeek = entity.DayOfWeek,
@@ -131,12 +222,17 @@ public class ScheduleService : IScheduleService
         var subjectIds = schedules.Select(s => s.SubjectId).Distinct().ToList();
         var subjects = await _dbContext.CachedSubjects.Where(s => subjectIds.Contains(s.Id)).ToListAsync();
 
+        var classIds = schedules.Select(s => s.ClassId).Distinct().ToList();
+        var classes = await _classRepository.GetAllAsync();
+
         return schedules.Select(entity => {
             var subject = subjects.FirstOrDefault(s => s.Id == entity.SubjectId);
+            var targetClass = classes.FirstOrDefault(c => c.Id == entity.ClassId);
             return new ScheduleResponseDto
             {
                 Id = entity.Id,
                 ClassId = entity.ClassId,
+                ClassName = targetClass?.Name ?? string.Empty,
                 SubjectId = entity.SubjectId,
                 TeacherId = entity.TeacherId,
                 DayOfWeek = entity.DayOfWeek,
@@ -153,11 +249,13 @@ public class ScheduleService : IScheduleService
     {
         var teacher = await _dbContext.CachedUsers.FirstOrDefaultAsync(u => u.Id == entity.TeacherId);
         var subject = await _dbContext.CachedSubjects.FirstOrDefaultAsync(s => s.Id == entity.SubjectId);
+        var targetClass = await _classRepository.GetByIdAsync(entity.ClassId);
 
         return new ScheduleResponseDto
         {
             Id = entity.Id,
             ClassId = entity.ClassId,
+            ClassName = targetClass?.Name ?? string.Empty,
             SubjectId = entity.SubjectId,
             TeacherId = entity.TeacherId,
             DayOfWeek = entity.DayOfWeek,

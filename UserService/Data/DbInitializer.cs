@@ -14,9 +14,11 @@ public static class DbInitializer
         // Tự động áp dụng Migrations nếu chưa được chạy
         await context.Database.MigrateAsync();
 
-        // Xóa sạch dữ liệu cũ để tránh trùng lặp và áp dụng seed mới
-        context.Users.RemoveRange(context.Users);
-        await context.SaveChangesAsync();
+        // Chỉ seed dữ liệu mẫu khi database chưa có dữ liệu
+        if (await context.Users.AnyAsync())
+        {
+            return;
+        }
 
         var users = new List<User>();
 

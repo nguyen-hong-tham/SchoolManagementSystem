@@ -20,12 +20,15 @@ public class SubjectViewModel
     [Range(1, 12, ErrorMessage = "Khối lớp phải từ 1 đến 12")]
     public int GradeLevel { get; set; }
 
+    public bool IsActive { get; set; } = true;
+
     public DateTime CreatedAt { get; set; }
 }
 
 public class CreateSubjectRequest
 {
     [Required(ErrorMessage = "Mã môn học là bắt buộc")]
+    [RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "Mã môn học chỉ được chứa chữ cái, số và dấu gạch dưới")]
     public string Code { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Tên môn học là bắt buộc")]
@@ -36,6 +39,8 @@ public class CreateSubjectRequest
     [Required(ErrorMessage = "Khối lớp là bắt buộc")]
     [Range(1, 12, ErrorMessage = "Khối lớp phải từ 1 đến 12")]
     public int GradeLevel { get; set; }
+
+    public bool IsActive { get; set; } = true;
 }
 
 public class UpdateSubjectRequest
@@ -48,4 +53,6 @@ public class UpdateSubjectRequest
     [Required(ErrorMessage = "Khối lớp là bắt buộc")]
     [Range(1, 12, ErrorMessage = "Khối lớp phải từ 1 đến 12")]
     public int GradeLevel { get; set; }
+
+    public bool IsActive { get; set; } = true;
 }

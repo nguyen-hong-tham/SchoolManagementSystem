@@ -25,6 +25,79 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(x => x.Email == usernameOrEmail || x.Username == usernameOrEmail);
     }
 
+    public async Task<User?> GetByUserCodeAsync(string userCode)
+    {
+        return await _db.Users.Include(x => x.TeacherProfile)
+            .FirstOrDefaultAsync(x => x.UserCode == userCode);
+    }
+
+    public async Task<User?> GetByUsernameAsync(string username)
+    {
+        return await _db.Users.Include(x => x.TeacherProfile)
+            .FirstOrDefaultAsync(x => x.Username == username);
+    }
+
+    public async Task<bool> IsEmailTakenAsync(string email, Guid? excludeUserId = null)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        var query = _db.Users.AsQueryable();
+        if (excludeUserId.HasValue)
+            query = query.Where(u => u.Id != excludeUserId.Value);
+        return await query.AnyAsync(u => u.Email.ToLower() == email.ToLower().Trim());
+    }
+
+    public async Task<bool> IsUserCodeTakenAsync(string userCode, Guid? excludeUserId = null)
+    {
+        if (string.IsNullOrWhiteSpace(userCode)) return false;
+        var query = _db.Users.AsQueryable();
+        if (excludeUserId.HasValue)
+            query = query.Where(u => u.Id != excludeUserId.Value);
+        return await query.AnyAsync(u => u.UserCode.ToLower() == userCode.ToLower().Trim());
+    }
+
+    public async Task<bool> IsUsernameTakenAsync(string username, Guid? excludeUserId = null)
+    {
+        if (string.IsNullOrWhiteSpace(username)) return false;
+        var query = _db.Users.AsQueryable();
+        if (excludeUserId.HasValue)
+            query = query.Where(u => u.Id != excludeUserId.Value);
+        return await query.AnyAsync(u => u.Username.ToLower() == username.ToLower().Trim());
+    }
+
+    public async Task<bool> IsPhoneTakenAsync(string phone, Guid? excludeUserId = null)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return false;
+        var query = _db.Users.AsQueryable();
+        if (excludeUserId.HasValue)
+            query = query.Where(u => u.Id != excludeUserId.Value);
+        return await query.AnyAsync(u => u.PhoneNumber == phone.Trim());
+    }
+
+    public async Task<string> GetNextUserCodeAsync(string role)
+    {
+        string prefix = "STU";
+        if (role.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
+            prefix = "TEA";
+        else if (role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+            prefix = "ADM";
+
+        var codes = await _db.Users
+            .Where(u => u.UserCode.StartsWith(prefix))
+            .Select(u => u.UserCode)
+            .ToListAsync();
+
+        int maxNum = 0;
+        foreach (var c in codes)
+        {
+            var numPart = c.Substring(prefix.Length);
+            if (int.TryParse(numPart, out int num) && num > maxNum)
+            {
+                maxNum = num;
+            }
+        }
+        return $"{prefix}{maxNum + 1:D3}";
+    }
+
     public async Task<User> CreateAsync(User user)
     {
         _db.Users.Add(user);

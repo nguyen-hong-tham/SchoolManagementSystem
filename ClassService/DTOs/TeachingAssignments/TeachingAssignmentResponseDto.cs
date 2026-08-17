@@ -11,6 +11,7 @@ public class TeachingAssignmentResponseDto
     public Guid SubjectId { get; set; }
     public string SubjectName { get; set; } = string.Empty;
     public Guid ClassId { get; set; }
+    public string ClassName { get; set; } = string.Empty;
     public string SchoolYear { get; set; } = string.Empty;
     public DateTime AssignedDate { get; set; }
 }

@@ -9,7 +9,8 @@ namespace FrontendMVC.Models
         {
             if (value is DateTime dateTime)
             {
-                if (dateTime > DateTime.UtcNow)
+                // Cho phép ngày hôm nay, chỉ báo lỗi nếu ngày thực sự vượt quá ngày hiện tại
+                if (dateTime.Date > DateTime.Today && dateTime.Date > DateTime.UtcNow.Date)
                 {
                     return new ValidationResult(ErrorMessage ?? "Ngày không thể ở tương lai.");
                 }

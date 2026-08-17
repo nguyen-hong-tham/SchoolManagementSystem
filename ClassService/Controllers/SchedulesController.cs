@@ -36,6 +36,60 @@ public class SchedulesController : ControllerBase
         }
     }
 
+    [HttpPut("schedules/{id:guid}")]
+    public async Task<ActionResult<ScheduleResponseDto>> UpdateSchedule(Guid id, [FromBody] UpdateScheduleDto dto)
+    {
+        try
+        {
+            var result = await _scheduleService.UpdateScheduleAsync(id, dto);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("schedules/{id:guid}")]
+    public async Task<IActionResult> DeleteSchedule(Guid id)
+    {
+        try
+        {
+            await _scheduleService.DeleteScheduleAsync(id);
+            return Ok(new { message = "Xóa tiết học khỏi thời khóa biểu thành công." });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("classes/{classId:guid}/schedule")]
+    public async Task<IActionResult> ClearClassSchedule(Guid classId, [FromQuery] string? schoolYear)
+    {
+        try
+        {
+            await _scheduleService.ClearClassScheduleAsync(classId, schoolYear);
+            return Ok(new { message = "Xóa toàn bộ thời khóa biểu thành công." });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpGet("classes/{classId:guid}/schedule")]
     public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetClassSchedule(Guid classId, [FromQuery] string? schoolYear)
     {

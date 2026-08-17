@@ -78,6 +78,31 @@ public class SubjectController : ControllerBase
         }
     }
 
+    // Kiểm tra trùng mã môn học (Validate Realtime)
+    [HttpGet("check-code")]
+    [AllowAnonymous]
+    public async Task<ActionResult<bool>> CheckCode([FromQuery] string code, [FromQuery] Guid? excludeId)
+    {
+        var exists = await _subjectService.CheckCodeExistsAsync(code, excludeId);
+        return Ok(new { isTaken = exists });
+    }
+
+    // Đổi trạng thái Hoạt động / Ngừng giảng dạy (Chỉ Admin mới có quyền)
+    [HttpPost("{id:guid}/toggle-status")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<SubjectResponse>> ToggleStatus(Guid id)
+    {
+        try
+        {
+            var response = await _subjectService.ToggleStatusAsync(id);
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
     // Xóa môn học (Chỉ Admin mới có quyền)
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin")]

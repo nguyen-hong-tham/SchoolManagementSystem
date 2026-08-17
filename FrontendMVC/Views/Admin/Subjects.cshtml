@@ -3,51 +3,108 @@
     ViewData["Title"] = "Quản Lý Môn Học";
     Layout = "_Layout";
     var searchValue = ViewBag.Search as string;
+    var gradeFilter = ViewBag.GradeFilter as int?;
+    var statusFilter = ViewBag.StatusFilter as string;
+    var totalSubjects = Model?.Count() ?? 0;
 }
 
-<div class="custom-card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-        <!-- Add Subject Button Outside Table -->
-        <a asp-action="CreateSubject" class="btn btn-primary" style="padding: 10px 20px; text-decoration: none;">
-            ➕ Thêm Môn Học Mới
+<div class="custom-card" style="padding: 24px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+    <!-- Header Section -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+        <div>
+            <h2 style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 10px;">
+                <span></span> Danh Mục Môn Học
+                <span class="badge" style="background-color: #e0e7ff; color: #4338ca; font-size: 0.85rem; font-weight: 600; padding: 4px 10px; border-radius: 20px;">
+                    Tổng: <span id="totalSubjectCount">@totalSubjects</span> môn
+                </span>
+            </h2>
+            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0;">Quản lý danh mục các môn học, mã môn học chuẩn hóa và trạng thái giảng dạy theo từng khối lớp</p>
+        </div>
+
+        <a asp-action="CreateSubject" class="btn btn-primary" style="padding: 10px 22px; font-weight: 600; border-radius: 8px; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+            <span></span> Thêm Môn Học Mới
         </a>
-
-        <!-- Search Bar -->
-        <form asp-action="Subjects" method="get" style="display: flex; gap: 10px; align-items: center;">
-            <select name="grade" class="form-control" onchange="this.form.submit()" style="width: 150px; padding: 8px 12px; margin-bottom: 0;">
-                <option value="">-- Tất cả khối --</option>
-                <option value="10" selected="@(ViewBag.GradeFilter == 10)">Khối 10</option>
-                <option value="11" selected="@(ViewBag.GradeFilter == 11)">Khối 11</option>
-                <option value="12" selected="@(ViewBag.GradeFilter == 12)">Khối 12</option>
-            </select>
-            <input type="text" name="search" class="form-control" placeholder="Tìm theo mã hoặc tên..." value="@searchValue" style="width: 280px; padding: 8px 12px; margin-bottom: 0;" />
-            <button type="submit" class="btn btn-secondary" style="padding: 8px 16px;">Tìm kiếm</button>
-            @if (!string.IsNullOrEmpty(searchValue) || ViewBag.GradeFilter != null)
-            {
-                <a asp-action="Subjects" class="btn btn-secondary" style="padding: 8px 16px; text-decoration: none; display: flex; align-items: center;">Xóa lọc</a>
-            }
-        </form>
-
     </div>
 
+    <!-- Filter & Search Toolbar -->
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
+        <form asp-action="Subjects" method="get" id="subjectFilterForm" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            
+            <!-- Lọc Khối -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: #475569; white-space: nowrap; margin-bottom: 0;"> Khối:</label>
+                <select name="grade" class="form-control" onchange="this.form.submit()" style="min-width: 140px; padding: 8px 12px; border-radius: 8px; border-color: #cbd5e1;">
+                    <option value="">-- Tất cả khối --</option>
+                    <option value="10" selected="@(gradeFilter == 10)">Khối 10</option>
+                    <option value="11" selected="@(gradeFilter == 11)">Khối 11</option>
+                    <option value="12" selected="@(gradeFilter == 12)">Khối 12</option>
+                </select>
+            </div>
+
+            <!-- Lọc Trạng Thái -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: #475569; white-space: nowrap; margin-bottom: 0;"> Trạng thái:</label>
+                <select name="status" class="form-control" onchange="this.form.submit()" style="min-width: 170px; padding: 8px 12px; border-radius: 8px; border-color: #cbd5e1;">
+                    <option value="" selected="@(string.IsNullOrEmpty(statusFilter))">-- Tất cả trạng thái --</option>
+                    <option value="active" selected="@(statusFilter == "active")"> Đang giảng dạy</option>
+                    <option value="inactive" selected="@(statusFilter == "inactive")"> Ngừng giảng dạy</option>
+                </select>
+            </div>
+
+            <!-- Tìm kiếm -->
+            <div style="flex: 1; min-width: 220px;">
+                <input type="text" name="search" class="form-control" placeholder="Tìm theo mã môn (VD: MATH10) hoặc tên môn..." value="@searchValue" style="width: 100%; padding: 8px 14px; border-radius: 8px; border-color: #cbd5e1;" />
+            </div>
+
+            <button type="submit" class="btn btn-secondary" style="padding: 8px 18px; font-weight: 600; border-radius: 8px;">
+                 Tìm kiếm
+            </button>
+
+            @if (!string.IsNullOrEmpty(searchValue) || gradeFilter.HasValue || !string.IsNullOrEmpty(statusFilter))
+            {
+                <a asp-action="Subjects" class="btn btn-outline-secondary" style="padding: 8px 16px; border-radius: 8px; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                    ✕ Xóa lọc
+                </a>
+            }
+        </form>
+    </div>
+
+    <!-- Alert Messages -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="border-radius: 8px; margin-bottom: 16px;">
+             @TempData["SuccessMessage"]
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger" style="border-radius: 8px; margin-bottom: 16px;">
+             @TempData["ErrorMessage"]
+        </div>
+    }
+
     <!-- Subjects Table -->
-    <div class="table-responsive">
-        <table class="custom-table">
-            <thead>
+    <div class="table-responsive" style="border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 16px;">
+        <table class="custom-table" id="subjectsDataTable" style="margin-bottom: 0;">
+            <thead style="background-color: #f1f5f9;">
                 <tr>
-                    <th style="width: 50px;">STT</th>
-                    <th style="width: 150px;">Mã Môn Học</th>
-                    <th>Tên Môn Học</th>
-                    <th>Mô Tả</th>
-                    <th style="width: 100px;">Khối Lớp</th>
+                    <th style="width: 50px; text-align: center;">STT</th>
+                    <th style="min-width: 130px;">Mã Môn Học</th>
+                    <th style="min-width: 180px;">Tên Môn Học</th>
+                    <th style="min-width: 100px; text-align: center;">Khối Lớp</th>
+                    <th style="min-width: 200px;">Mô Tả</th>
+                    <th style="width: 160px; text-align: center;">Trạng Thái</th>
                     <th style="text-align: right; width: 220px;">Hành Động</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="subjectsTableBody">
                 @if (Model == null || !Model.Any())
                 {
-                    <tr>
-                        <td colspan="6" class="text-center text-muted" style="padding: 30px 0;">Không tìm thấy môn học nào.</td>
+                    <tr id="emptyRow">
+                        <td colspan="7" class="text-center text-muted" style="padding: 40px 0;">
+                            <div style="font-size: 2rem; margin-bottom: 8px;"></div>
+                            <div style="font-weight: 500;">Không tìm thấy môn học nào phù hợp với bộ lọc.</div>
+                        </td>
                     </tr>
                 }
                 else
@@ -55,18 +112,80 @@
                     int index = 1;
                     @foreach (var item in Model)
                     {
-                        <tr>
-                            <td>@(index++)</td>
-                            <td class="fw-bold" style="color: #4f46e5;">@item.Code</td>
-                            <td class="fw-bold" style="color: #1e293b;">@item.Name</td>
-                            <td class="text-muted" style="font-size: 0.9rem;">@item.Description</td>
-                            <td><span class="badge badge-primary">Khối @item.GradeLevel</span></td>
+                        <tr class="subject-data-row" data-index="@index" data-subject-id="@item.Id" data-subject-name="@item.Name" data-subject-code="@item.Code" data-is-active="@(item.IsActive ? "true" : "false")">
+                            <td style="text-align: center; font-weight: 600; color: #64748b;" class="row-stt">@(index++)</td>
+                            
+                            <!-- Mã môn -->
                             <td>
-                                <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                                    <a asp-action="EditSubject" asp-route-id="@item.Id" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; text-decoration: none; color: #4f46e5; border-color: #c7d2fe;"> Sửa</a>
-                                    <form asp-action="DeleteSubject" asp-route-id="@item.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa môn học @item.Name (@item.Code)? Mọi điểm số và thời khóa biểu liên quan sẽ bị ảnh hưởng.');">
-                                        <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;">Xóa</button>
+                                <span class="badge" style="background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-family: monospace; font-size: 0.95rem; font-weight: 700; padding: 5px 10px; border-radius: 6px;">
+                                    @item.Code
+                                </span>
+                            </td>
+
+                            <!-- Tên môn -->
+                            <td>
+                                <div style="font-weight: 700; font-size: 1.02rem; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                                    <span></span>
+                                    <span>@item.Name</span>
+                                </div>
+                            </td>
+
+                            <!-- Khối -->
+                            <td style="text-align: center;">
+                                @if (item.GradeLevel == 10)
+                                {
+                                    <span class="badge" style="background-color: #e0f2fe; color: #0369a1; font-weight: 600; padding: 5px 10px; border-radius: 6px;">Khối 10</span>
+                                }
+                                else if (item.GradeLevel == 11)
+                                {
+                                    <span class="badge" style="background-color: #fef3c7; color: #b45309; font-weight: 600; padding: 5px 10px; border-radius: 6px;">Khối 11</span>
+                                }
+                                else
+                                {
+                                    <span class="badge" style="background-color: #fce7f3; color: #be185d; font-weight: 600; padding: 5px 10px; border-radius: 6px;">Khối 12</span>
+                                }
+                            </td>
+
+                            <!-- Mô tả -->
+                            <td class="text-muted" style="font-size: 0.88rem; max-width: 250px;">
+                                @(string.IsNullOrEmpty(item.Description) ? "—" : item.Description)
+                            </td>
+
+                            <!-- Trạng thái -->
+                            <td style="text-align: center;">
+                                @if (item.IsActive)
+                                {
+                                    <span class="badge" style="background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-weight: 600; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem;">
+                                         Đang giảng dạy
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge" style="background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; font-weight: 600; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem;">
+                                         Ngừng giảng dạy
+                                    </span>
+                                }
+                            </td>
+
+                            <!-- Hành động -->
+                            <td>
+                                <div style="display: flex; justify-content: flex-end; gap: 6px; align-items: center;">
+                                    <!-- Đổi trạng thái nhanh -->
+                                    <form asp-action="ToggleSubjectStatus" asp-route-id="@item.Id" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" style="padding: 5px 10px; font-size: 0.82rem; border-radius: 6px;" title="@(item.IsActive ? "Chuyển sang Ngừng giảng dạy" : "Kích hoạt Đang giảng dạy")">
+                                            @(item.IsActive ? "⏸ Tắt" : " Bật")
+                                        </button>
                                     </form>
+
+                                    <!-- Sửa -->
+                                    <a asp-action="EditSubject" asp-route-id="@item.Id" class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.85rem; font-weight: 500; text-decoration: none; color: #4f46e5; border-color: #c7d2fe; border-radius: 6px;" title="Chỉnh sửa môn học">
+                                         Sửa
+                                    </a>
+
+                                    <!-- Xóa an toàn -->
+                                    <button type="button" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.85rem; border-radius: 6px;" onclick="confirmDeleteSubject('@item.Id', '@item.Name', '@item.Code', @(item.IsActive ? "true" : "false"))" title="Xóa môn học">
+                                        ️ Xóa
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -75,4 +194,193 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Pagination Bar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; padding-top: 8px;">
+        <div style="color: #64748b; font-size: 0.88rem; display: flex; align-items: center; gap: 10px;">
+            <span id="paginationInfo">Hiển thị 0 - 0 trong tổng số 0 môn học</span>
+            <div style="display: inline-flex; align-items: center; gap: 6px;">
+                <label style="margin-bottom: 0; font-size: 0.82rem; color: #94a3b8;">Số dòng/trang:</label>
+                <select id="pageSizeSelect" class="form-select form-select-sm" style="width: auto; display: inline-block; padding: 2px 24px 2px 8px; font-size: 0.85rem; border-radius: 6px; border-color: #cbd5e1;">
+                    <option value="10" selected>10</option>
+                    <option value="15">15</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+        </div>
+
+        <nav aria-label="Subjects pagination">
+            <ul class="pagination pagination-sm mb-0" id="paginationControls" style="display: flex; gap: 4px; list-style: none; margin: 0; padding: 0;">
+                <!-- Generated by JavaScript -->
+            </ul>
+        </nav>
+    </div>
 </div>
+
+<!-- Form Xóa Ẩn Cho Action DeleteSubject -->
+<form id="deleteSubjectForm" asp-action="DeleteSubject" method="post" style="display:none;">
+    <input type="hidden" name="id" id="deleteSubjectIdInput" />
+</form>
+
+<!-- Modal Xác Nhận & Cảnh Báo Khi Xóa Môn Học -->
+<div id="deleteSubjectModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: white; border-radius: 12px; width: 100%; max-width: 480px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); margin: 20px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <div style="width: 44px; height: 44px; border-radius: 50%; background-color: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                
+            </div>
+            <div>
+                <h4 style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 2px;">Cảnh Báo Xóa Môn Học</h4>
+                <div style="font-size: 0.85rem; color: #64748b;">Ràng buộc điểm số & phân công giảng dạy</div>
+            </div>
+        </div>
+
+        <p style="font-size: 0.92rem; color: #475569; line-height: 1.5; margin-bottom: 14px;">
+            Bạn đang yêu cầu xóa môn học <strong id="modalSubjectName" style="color: #0f172a;">Toán học</strong> (<code id="modalSubjectCode" style="color: #4f46e5;">TOAN10</code>).
+        </p>
+
+        <div style="background-color: #fff7ed; border-left: 4px solid #f97316; padding: 12px 14px; border-radius: 6px; margin-bottom: 18px; font-size: 0.88rem; color: #9a3412; line-height: 1.4;">
+            💡 <strong>Khuyến nghị từ hệ thống:</strong> Nếu môn học này đã từng có học sinh học hoặc có điểm số trong quá khứ, bạn nên chuyển trạng thái sang <strong>"Ngừng giảng dạy"</strong> thay vì xóa để bảo toàn lịch sử học tập của học sinh.
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="btn btn-secondary" onclick="closeDeleteSubjectModal()" style="padding: 8px 16px; border-radius: 8px;">
+                Hủy bỏ
+            </button>
+            <button type="button" class="btn btn-danger" onclick="submitDeleteSubject()" style="padding: 8px 18px; font-weight: 600; border-radius: 8px;">
+                Vẫn xóa môn học
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Client-side Pagination Logic
+    let currentPage = 1;
+    let pageSize = 10;
+    const allRows = Array.from(document.querySelectorAll('.subject-data-row'));
+
+    function renderPagination() {
+        const totalItems = allRows.length;
+        const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, totalItems);
+
+        // Hide all rows, show current page rows
+        allRows.forEach((row, i) => {
+            if (i >= startIndex && i < endIndex) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Update info text
+        const infoEl = document.getElementById('paginationInfo');
+        if (infoEl) {
+            if (totalItems === 0) {
+                infoEl.innerText = 'Hiển thị 0 trong tổng số 0 môn học';
+            } else {
+                infoEl.innerText = `Hiển thị ${startIndex + 1} - ${endIndex} trong tổng số ${totalItems} môn học`;
+            }
+        }
+
+        // Build pagination controls
+        const controls = document.getElementById('paginationControls');
+        if (!controls) return;
+        controls.innerHTML = '';
+
+        if (totalPages <= 1) return;
+
+        // Button Previous
+        const prevLi = document.createElement('li');
+        prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+        prevLi.innerHTML = `<button type="button" class="page-link" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: ${currentPage === 1 ? '#f1f5f9' : '#fff'}; color: ${currentPage === 1 ? '#94a3b8' : '#334155'}; font-weight: 500;">‹ Trước</button>`;
+        if (currentPage > 1) {
+            prevLi.querySelector('button').addEventListener('click', () => {
+                currentPage--;
+                renderPagination();
+            });
+        }
+        controls.appendChild(prevLi);
+
+        // Page Numbers
+        for (let p = 1; p <= totalPages; p++) {
+            if (totalPages > 7) {
+                if (p !== 1 && p !== totalPages && Math.abs(p - currentPage) > 2) {
+                    if (p === 2 || p === totalPages - 1) {
+                        const dotsLi = document.createElement('li');
+                        dotsLi.className = 'page-item disabled';
+                        dotsLi.innerHTML = `<span class="page-link" style="padding: 6px 10px; border: none; background: transparent; color: #94a3b8;">...</span>`;
+                        controls.appendChild(dotsLi);
+                    }
+                    continue;
+                }
+            }
+
+            const pLi = document.createElement('li');
+            const isActive = p === currentPage;
+            pLi.className = `page-item ${isActive ? 'active' : ''}`;
+            pLi.innerHTML = `<button type="button" class="page-link" style="padding: 6px 12px; border-radius: 6px; border: 1px solid ${isActive ? '#4f46e5' : '#cbd5e1'}; background: ${isActive ? '#4f46e5' : '#fff'}; color: ${isActive ? '#fff' : '#334155'}; font-weight: ${isActive ? '700' : '500'};">${p}</button>`;
+            
+            pLi.querySelector('button').addEventListener('click', () => {
+                currentPage = p;
+                renderPagination();
+            });
+            controls.appendChild(pLi);
+        }
+
+        // Button Next
+        const nextLi = document.createElement('li');
+        nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+        nextLi.innerHTML = `<button type="button" class="page-link" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: ${currentPage === totalPages ? '#f1f5f9' : '#fff'}; color: ${currentPage === totalPages ? '#94a3b8' : '#334155'}; font-weight: 500;">Tiếp ›</button>`;
+        if (currentPage < totalPages) {
+            nextLi.querySelector('button').addEventListener('click', () => {
+                currentPage++;
+                renderPagination();
+            });
+        }
+        controls.appendChild(nextLi);
+    }
+
+    document.getElementById('pageSizeSelect')?.addEventListener('change', function () {
+        pageSize = parseInt(this.value, 10);
+        currentPage = 1;
+        renderPagination();
+    });
+
+    let targetDeleteSubjectId = null;
+    function confirmDeleteSubject(subjectId, subjectName, subjectCode, isActive) {
+        targetDeleteSubjectId = subjectId;
+        document.getElementById('modalSubjectName').innerText = subjectName;
+        document.getElementById('modalSubjectCode').innerText = subjectCode;
+        const modal = document.getElementById('deleteSubjectModal');
+        modal.style.display = 'flex';
+    }
+
+    function closeDeleteSubjectModal() {
+        targetDeleteSubjectId = null;
+        document.getElementById('deleteSubjectModal').style.display = 'none';
+    }
+
+    function submitDeleteSubject() {
+        if (!targetDeleteSubjectId) return;
+        document.getElementById('deleteSubjectIdInput').value = targetDeleteSubjectId;
+        document.getElementById('deleteSubjectForm').submit();
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeDeleteSubjectModal();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        renderPagination();
+    });
+</script>

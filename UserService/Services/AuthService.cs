@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MassTransit; //của MassTransit vào constructor để phát sự kiện lên Broker khi cơ sở dữ liệu thay đổi thành công:
+using Microsoft.Extensions.Logging;
 using Shared.Events;
 using UserService.DTOs;
 using UserService.Entities;
@@ -14,17 +15,20 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly JwtService _jwtService;
-    private readonly IPublishEndpoint _publishEndpoint; // tiêm interface
+    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         IUserRepository userRepository,
         JwtService jwtService,
-        IPublishEndpoint publishEndpoint
+        IPublishEndpoint publishEndpoint,
+        ILogger<AuthService> logger
     )
     {
         _userRepository = userRepository;
         _jwtService = jwtService;
         _publishEndpoint = publishEndpoint;
+        _logger = logger;
     }
 
     // phát event khi đăng kí mới
@@ -318,10 +322,23 @@ public class AuthService : IAuthService
     // phát sự kiện khi admin tạo user mới
     public async Task<User> CreateUserAsync(AdminCreateUserRequest request)
     {
-        var existingUser = await _userRepository.GetByEmailAsync(request.Email);
-        if (existingUser != null)
+        var existingEmail = await _userRepository.GetByEmailAsync(request.Email);
+        if (existingEmail != null)
         {
-            throw new InvalidOperationException("Email đã tồn tại");
+            throw new InvalidOperationException("Email đã tồn tại.");
+        }
+
+        var existingUserCode = await _userRepository.GetByUserCodeAsync(request.UserCode);
+        if (existingUserCode != null)
+        {
+            throw new InvalidOperationException($"Mã số '{request.UserCode}' đã tồn tại.");
+        }
+
+        string username = !string.IsNullOrWhiteSpace(request.Username) ? request.Username.Trim() : request.UserCode.Trim();
+        var existingUsername = await _userRepository.GetByUsernameAsync(username);
+        if (existingUsername != null)
+        {
+            throw new InvalidOperationException($"Tên đăng nhập '{username}' đã tồn tại.");
         }
 
         if (!Enum.TryParse<UserRole>(request.Role, true, out var parsedRole))
@@ -329,15 +346,63 @@ public class AuthService : IAuthService
             throw new ArgumentException("Invalid role. Role must be Admin, Teacher, or Student.");
         }
 
+        // Age validation
+        int age = DateTime.Today.Year - request.DateOfBirth.Year;
+        if (request.DateOfBirth.Date > DateTime.Today.AddYears(-age)) age--;
+
+        if (parsedRole == UserRole.Teacher)
+        {
+            if (age < 21)
+            {
+                throw new InvalidOperationException("Giáo viên phải từ 21 tuổi trở lên (ngày sinh không hợp lệ).");
+            }
+            if (request.HireDate.HasValue)
+            {
+                if (request.HireDate.Value.Date > DateTime.Today && request.HireDate.Value.Date > DateTime.UtcNow.Date)
+                {
+                    throw new InvalidOperationException("Ngày ký hợp đồng không được ở tương lai.");
+                }
+                if (request.HireDate.Value.Date < request.DateOfBirth.Date.AddYears(18))
+                {
+                    throw new InvalidOperationException("Ngày ký hợp đồng phải sau ngày sinh ít nhất 18 năm.");
+                }
+            }
+        }
+        else if (parsedRole == UserRole.Student)
+        {
+            if (age < 14 || age > 20)
+            {
+                throw new InvalidOperationException("Độ tuổi của học sinh cấp 3 (khối 10, 11, 12) phải từ 14 đến 20 tuổi.");
+            }
+        }
+        else if (parsedRole == UserRole.Admin)
+        {
+            if (age < 18)
+            {
+                throw new InvalidOperationException("Quản trị viên phải từ 18 tuổi trở lên.");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+        {
+            var phoneTaken = await _userRepository.IsPhoneTakenAsync(request.PhoneNumber.Trim());
+            if (phoneTaken)
+            {
+                throw new InvalidOperationException($"Số điện thoại '{request.PhoneNumber}' đã được sử dụng.");
+            }
+        }
+
+        string password = !string.IsNullOrWhiteSpace(request.Password) ? request.Password : "12345678";
+
         var user = new User
         {
             Id = Guid.NewGuid(),
-            Username = request.UserCode, // Tên tài khoản chính là mã giáo viên/học sinh
-            Email = request.Email,
-            FullName = request.FullName,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("12345678"), // Mật khẩu cấp ban đầu là 12345678
+            Username = username,
+            Email = request.Email.Trim(),
+            FullName = request.FullName.Trim(),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
             Role = parsedRole,
-            UserCode = request.UserCode,
+            UserCode = request.UserCode.Trim(),
             Gender = request.Gender,
             DateOfBirth = request.DateOfBirth,
             PhoneNumber = request.PhoneNumber ?? string.Empty,
@@ -380,7 +445,7 @@ public class AuthService : IAuthService
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[RabbitMQ Publish Info] Failed to publish UserCreatedEvent in background: {ex.Message}");
+                _logger.LogError(ex, "Failed to publish UserCreatedEvent for user {UserId}", createdUser.Id);
             }
         });
 
@@ -419,7 +484,7 @@ public class AuthService : IAuthService
         if (actorRole == "Teacher" && targetUser.Role != UserRole.Student)
         {
             throw new UnauthorizedAccessException(
-                "Giáo viên chỉ được phép đổi mật khẩu của Học sinh."
+                "Giảng viên chỉ được phép đổi mật khẩu của Sinh viên."
             );
         }
 
@@ -447,5 +512,26 @@ public class AuthService : IAuthService
             }
             await _userRepository.UpdateAsync(user);
         }
+    }
+
+    public async Task<object> CheckAvailabilityAsync(string? userCode, string? username, string? email, string? phoneNumber, Guid? excludeId)
+    {
+        bool isUserCodeTaken = !string.IsNullOrWhiteSpace(userCode) && await _userRepository.IsUserCodeTakenAsync(userCode, excludeId);
+        bool isUsernameTaken = !string.IsNullOrWhiteSpace(username) && await _userRepository.IsUsernameTakenAsync(username, excludeId);
+        bool isEmailTaken = !string.IsNullOrWhiteSpace(email) && await _userRepository.IsEmailTakenAsync(email, excludeId);
+        bool isPhoneTaken = !string.IsNullOrWhiteSpace(phoneNumber) && await _userRepository.IsPhoneTakenAsync(phoneNumber, excludeId);
+
+        return new
+        {
+            isUserCodeTaken,
+            isUsernameTaken,
+            isEmailTaken,
+            isPhoneTaken
+        };
+    }
+
+    public async Task<string> GetNextUserCodeAsync(string role)
+    {
+        return await _userRepository.GetNextUserCodeAsync(role);
     }
 }

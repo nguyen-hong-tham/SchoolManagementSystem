@@ -86,7 +86,7 @@ public class AdminController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Classes(string? search, int? grade)
+    public async Task<IActionResult> Classes(string? search, int? grade, string? schoolYear)
     {
         var redirect = CheckAdminRole();
         if (redirect != null)
@@ -94,12 +94,27 @@ public class AdminController : Controller
 
         var client = _clientFactory.CreateClient("ClassService");
         var classes = new List<ClassViewModel>();
+        var allSchoolYears = new List<string>();
+
         try
         {
             var response = await client.GetFromJsonAsync<IEnumerable<ClassViewModel>>("classes");
             if (response != null)
             {
-                classes = response.ToList();
+                var allFetched = response.ToList();
+                allSchoolYears = allFetched.Select(c => c.SchoolYear).Where(y => !string.IsNullOrEmpty(y)).Distinct().OrderByDescending(y => y).ToList();
+
+                // If schoolYear is not explicitly set, default to 2025-2026 or the newest year
+                if (string.IsNullOrEmpty(schoolYear))
+                {
+                    schoolYear = allSchoolYears.FirstOrDefault(y => y == "2025-2026") ?? allSchoolYears.FirstOrDefault() ?? "2025-2026";
+                }
+
+                classes = allFetched;
+                if (!string.Equals(schoolYear, "all", StringComparison.OrdinalIgnoreCase))
+                {
+                    classes = classes.Where(c => c.SchoolYear == schoolYear).ToList();
+                }
                 if (grade.HasValue)
                 {
                     classes = classes.Where(c => c.GradeLevel == grade.Value).ToList();
@@ -107,7 +122,9 @@ public class AdminController : Controller
                 if (!string.IsNullOrEmpty(search))
                 {
                     classes = classes
-                        .Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+                        .Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                                   (!string.IsNullOrEmpty(c.HomeroomTeacherName) && c.HomeroomTeacherName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                                   (!string.IsNullOrEmpty(c.HomeroomTeacherCode) && c.HomeroomTeacherCode.Contains(search, StringComparison.OrdinalIgnoreCase)))
                         .ToList();
                 }
             }
@@ -116,6 +133,8 @@ public class AdminController : Controller
 
         ViewBag.Search = search;
         ViewBag.GradeFilter = grade;
+        ViewBag.SchoolYearFilter = schoolYear;
+        ViewBag.AllSchoolYears = allSchoolYears;
         return View(classes);
     }
 
@@ -142,7 +161,27 @@ public class AdminController : Controller
             }
             else
             {
-                TempData["ErrorMessage"] = "Không thể tạo lớp học. Vui lòng kiểm tra lại.";
+                var errorString = await response.Content.ReadAsStringAsync();
+                try 
+                {
+                    var errObj = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string>>(errorString);
+                    if (errObj != null && errObj.ContainsKey("message"))
+                    {
+                        TempData["ErrorMessage"] = errObj["message"];
+                    }
+                    else if (errObj != null && errObj.ContainsKey("Message"))
+                    {
+                        TempData["ErrorMessage"] = errObj["Message"];
+                    }
+                    else 
+                    {
+                        TempData["ErrorMessage"] = "Không thể tạo lớp học. Vui lòng kiểm tra lại.";
+                    }
+                } 
+                catch 
+                {
+                    TempData["ErrorMessage"] = "Không thể tạo lớp học. Vui lòng kiểm tra lại.";
+                }
             }
         }
         catch
@@ -199,6 +238,18 @@ public class AdminController : Controller
             );
         }
         catch { }
+
+        if ((homeroom == null || string.IsNullOrEmpty(homeroom.TeacherName)) && classInfo.HomeroomTeacherId.HasValue && !string.IsNullOrEmpty(classInfo.HomeroomTeacherName))
+        {
+            homeroom = new HomeroomAssignmentViewModel
+            {
+                ClassId = classInfo.Id,
+                TeacherId = classInfo.HomeroomTeacherId.Value,
+                TeacherName = classInfo.HomeroomTeacherName,
+                TeacherCode = classInfo.HomeroomTeacherCode ?? string.Empty,
+                SchoolYear = classInfo.SchoolYear
+            };
+        }
 
         try
         {
@@ -283,10 +334,10 @@ public class AdminController : Controller
             .Where(t => !assignedTeacherIds.Contains(t.Id))
             .ToList();
 
-        // Lọc môn học chưa được phân công trong lớp này
+        // Lọc môn học chưa được phân công trong lớp này và còn đang hoạt động
         var assignedSubjectIds = teachingAssignments.Select(ta => ta.SubjectId).ToList();
         var availableSubjects = allSubjects
-            .Where(s => s.GradeLevel == classInfo.GradeLevel && !assignedSubjectIds.Contains(s.Id))
+            .Where(s => s.GradeLevel == classInfo.GradeLevel && s.IsActive && !assignedSubjectIds.Contains(s.Id))
             .ToList();
 
         ViewBag.ClassInfo = classInfo;
@@ -495,6 +546,38 @@ public class AdminController : Controller
         return RedirectToAction("ClassDetail", new { id = classId });
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetUnassignedStudentsJson()
+    {
+        var classClient = _clientFactory.CreateClient("ClassService");
+        var userClient = _clientFactory.CreateClient("UserService");
+        var assignedStudentIds = new List<Guid>();
+        try
+        {
+            var assignedResp = await classClient.GetFromJsonAsync<IEnumerable<Guid>>(
+                "student-classes/assigned-student-ids"
+            );
+            if (assignedResp != null)
+                assignedStudentIds = assignedResp.ToList();
+        }
+        catch { }
+
+        var availableStudents = new List<UserViewModel>();
+        try
+        {
+            var sResp = await userClient.GetFromJsonAsync<IEnumerable<UserViewModel>>(
+                "admin/students"
+            );
+            if (sResp != null)
+            {
+                availableStudents = sResp.Where(s => !assignedStudentIds.Contains(s.Id)).ToList();
+            }
+        }
+        catch { }
+
+        return Json(availableStudents);
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateSchedule(Guid classId, ScheduleViewModel model)
     {
@@ -526,6 +609,150 @@ public class AdminController : Controller
                 var errorObj = await response.Content.ReadFromJsonAsync<ErrorResponse>();
                 var errorMsg =
                     errorObj?.Message ?? "Trùng lặp thời gian phòng học, giáo viên hoặc lớp học.";
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { success = false, message = errorMsg });
+                }
+                TempData["ErrorMessage"] = errorMsg;
+            }
+        }
+        catch
+        {
+            var errorMsg = "Lỗi kết nối đến ClassService.";
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return Json(new { success = false, message = errorMsg });
+            }
+            TempData["ErrorMessage"] = errorMsg;
+        }
+
+        return RedirectToAction("ClassDetail", new { id = classId });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> UpdateSchedule(Guid id, Guid classId, ScheduleViewModel model)
+    {
+        var redirect = CheckAdminRole();
+        if (redirect != null)
+            return RedirectToAction("AccessDenied", "Auth");
+
+        var client = classClientHelper();
+        try
+        {
+            var updateDto = new
+            {
+                SubjectId = model.SubjectId,
+                TeacherId = model.TeacherId,
+                DayOfWeek = model.DayOfWeek,
+                Period = model.Period,
+                Room = model.Room,
+                SchoolYear = model.SchoolYear
+            };
+
+            var response = await client.PutAsJsonAsync($"schedules/{id}", updateDto);
+            if (response.IsSuccessStatusCode)
+            {
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { success = true, message = "Cập nhật tiết học thời khóa biểu thành công!" });
+                }
+                TempData["SuccessMessage"] = "Cập nhật tiết học thời khóa biểu thành công!";
+            }
+            else
+            {
+                var errorObj = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                var errorMsg = errorObj?.Message ?? "Không thể cập nhật tiết học do trùng lịch hoặc dữ liệu không hợp lệ.";
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { success = false, message = errorMsg });
+                }
+                TempData["ErrorMessage"] = errorMsg;
+            }
+        }
+        catch
+        {
+            var errorMsg = "Lỗi kết nối đến ClassService.";
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return Json(new { success = false, message = errorMsg });
+            }
+            TempData["ErrorMessage"] = errorMsg;
+        }
+
+        return RedirectToAction("ClassDetail", new { id = classId });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> DeleteSchedule(Guid id, Guid classId)
+    {
+        var redirect = CheckAdminRole();
+        if (redirect != null)
+            return RedirectToAction("AccessDenied", "Auth");
+
+        var client = classClientHelper();
+        try
+        {
+            var response = await client.DeleteAsync($"schedules/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { success = true, message = "Xóa tiết học khỏi thời khóa biểu thành công!" });
+                }
+                TempData["SuccessMessage"] = "Xóa tiết học khỏi thời khóa biểu thành công!";
+            }
+            else
+            {
+                var errorObj = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                var errorMsg = errorObj?.Message ?? "Không thể xóa tiết học.";
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { success = false, message = errorMsg });
+                }
+                TempData["ErrorMessage"] = errorMsg;
+            }
+        }
+        catch
+        {
+            var errorMsg = "Lỗi kết nối đến ClassService.";
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return Json(new { success = false, message = errorMsg });
+            }
+            TempData["ErrorMessage"] = errorMsg;
+        }
+
+        return RedirectToAction("ClassDetail", new { id = classId });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ClearClassSchedule(Guid classId, string? schoolYear)
+    {
+        var redirect = CheckAdminRole();
+        if (redirect != null)
+            return RedirectToAction("AccessDenied", "Auth");
+
+        var client = classClientHelper();
+        try
+        {
+            var url = $"classes/{classId}/schedule";
+            if (!string.IsNullOrEmpty(schoolYear))
+            {
+                url += $"?schoolYear={Uri.EscapeDataString(schoolYear)}";
+            }
+            var response = await client.DeleteAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { success = true, message = "Xóa toàn bộ thời khóa biểu của lớp thành công!" });
+                }
+                TempData["SuccessMessage"] = "Xóa toàn bộ thời khóa biểu của lớp thành công!";
+            }
+            else
+            {
+                var errorObj = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                var errorMsg = errorObj?.Message ?? "Không thể xóa thời khóa biểu.";
                 if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 {
                     return Json(new { success = false, message = errorMsg });
@@ -610,7 +837,30 @@ public class AdminController : Controller
                 TempData["SuccessMessage"] = "Cập nhật lớp học thành công!";
                 return RedirectToAction("Classes");
             }
-            TempData["ErrorMessage"] = "Không thể cập nhật lớp học.";
+            else
+            {
+                var errorString = await response.Content.ReadAsStringAsync();
+                try 
+                {
+                    var errObj = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string>>(errorString);
+                    if (errObj != null && errObj.ContainsKey("message"))
+                    {
+                        TempData["ErrorMessage"] = errObj["message"];
+                    }
+                    else if (errObj != null && errObj.ContainsKey("Message"))
+                    {
+                        TempData["ErrorMessage"] = errObj["Message"];
+                    }
+                    else 
+                    {
+                        TempData["ErrorMessage"] = "Không thể cập nhật lớp học.";
+                    }
+                } 
+                catch 
+                {
+                    TempData["ErrorMessage"] = "Không thể cập nhật lớp học.";
+                }
+            }
         }
         catch
         {
@@ -638,8 +888,10 @@ public class AdminController : Controller
             }
             else
             {
+                var errorObj = await response.Content.ReadFromJsonAsync<ErrorResponse>();
                 TempData["ErrorMessage"] =
-                    "Không thể xóa lớp học này (có thể có học sinh/phân công đang liên kết).";
+                    errorObj?.Message
+                    ?? "Không thể xóa lớp học này (có thể có học sinh/phân công đang liên kết).";
             }
         }
         catch
@@ -654,7 +906,7 @@ public class AdminController : Controller
     // SUBJECT CRUD ACTIONS
     // ==========================================
     [HttpGet]
-    public async Task<IActionResult> Subjects(string? search, int? grade)
+    public async Task<IActionResult> Subjects(string? search, int? grade, string? status)
     {
         var redirect = CheckAdminRole();
         if (redirect != null)
@@ -671,6 +923,13 @@ public class AdminController : Controller
                 if (grade.HasValue)
                 {
                     subjects = subjects.Where(s => s.GradeLevel == grade.Value).ToList();
+                }
+                if (!string.IsNullOrEmpty(status))
+                {
+                    if (status.Equals("active", StringComparison.OrdinalIgnoreCase))
+                        subjects = subjects.Where(s => s.IsActive).ToList();
+                    else if (status.Equals("inactive", StringComparison.OrdinalIgnoreCase))
+                        subjects = subjects.Where(s => !s.IsActive).ToList();
                 }
                 if (!string.IsNullOrEmpty(search))
                 {
@@ -690,7 +949,27 @@ public class AdminController : Controller
 
         ViewBag.Search = search;
         ViewBag.GradeFilter = grade;
+        ViewBag.StatusFilter = status;
         return View(subjects);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> CheckSubjectCode(string code, Guid? excludeId)
+    {
+        var client = _clientFactory.CreateClient("SubjectService");
+        try
+        {
+            var url = $"subjects/check-code?code={Uri.EscapeDataString(code ?? "")}";
+            if (excludeId.HasValue) url += $"&excludeId={excludeId.Value}";
+            var response = await client.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return Content(content, "application/json");
+            }
+        }
+        catch { }
+        return Json(new { isTaken = false });
     }
 
     [HttpGet]
@@ -699,7 +978,7 @@ public class AdminController : Controller
         var redirect = CheckAdminRole();
         if (redirect != null)
             return RedirectToAction("AccessDenied", "Auth");
-        return View(new CreateSubjectRequest());
+        return View(new CreateSubjectRequest { IsActive = true });
     }
 
     [HttpPost]
@@ -751,6 +1030,7 @@ public class AdminController : Controller
                 Name = sub.Name,
                 Description = sub.Description,
                 GradeLevel = sub.GradeLevel,
+                IsActive = sub.IsActive,
             };
             ViewBag.SubjectId = id;
             ViewBag.Code = sub.Code;
@@ -797,6 +1077,34 @@ public class AdminController : Controller
     }
 
     [HttpPost]
+    public async Task<IActionResult> ToggleSubjectStatus(Guid id)
+    {
+        var redirect = CheckAdminRole();
+        if (redirect != null)
+            return RedirectToAction("AccessDenied", "Auth");
+
+        var client = _clientFactory.CreateClient("SubjectService");
+        try
+        {
+            var response = await client.PostAsync($"subjects/{id}/toggle-status", null);
+            if (response.IsSuccessStatusCode)
+            {
+                TempData["SuccessMessage"] = "Thay đổi trạng thái môn học thành công!";
+            }
+            else
+            {
+                TempData["ErrorMessage"] = "Không thể thay đổi trạng thái môn học.";
+            }
+        }
+        catch
+        {
+            TempData["ErrorMessage"] = "Lỗi kết nối đến SubjectService.";
+        }
+
+        return RedirectToAction("Subjects");
+    }
+
+    [HttpPost]
     public async Task<IActionResult> DeleteSubject(Guid id)
     {
         var redirect = CheckAdminRole();
@@ -813,7 +1121,8 @@ public class AdminController : Controller
             }
             else
             {
-                TempData["ErrorMessage"] = "Không thể xóa môn học.";
+                var errObj = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                TempData["ErrorMessage"] = errObj?.Message ?? "Không thể xóa môn học (môn học có thể đang có phân công giảng dạy hoặc dữ liệu điểm số liên kết).";
             }
         }
         catch
@@ -947,6 +1256,44 @@ public class AdminController : Controller
         return View(model);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> CheckUnique(string? userCode, string? username, string? email, string? phoneNumber, Guid? excludeId)
+    {
+        var client = _clientFactory.CreateClient("UserService");
+        try
+        {
+            var url = $"admin/check-unique?userCode={Uri.EscapeDataString(userCode ?? "")}&username={Uri.EscapeDataString(username ?? "")}&email={Uri.EscapeDataString(email ?? "")}&phoneNumber={Uri.EscapeDataString(phoneNumber ?? "")}";
+            if (excludeId.HasValue)
+                url += $"&excludeId={excludeId.Value}";
+
+            var response = await client.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return Content(content, "application/json");
+            }
+        }
+        catch { }
+        return Json(new { isUserCodeTaken = false, isUsernameTaken = false, isEmailTaken = false, isPhoneTaken = false });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetNextUserCode(string role)
+    {
+        var client = _clientFactory.CreateClient("UserService");
+        try
+        {
+            var response = await client.GetAsync($"admin/next-user-code?role={Uri.EscapeDataString(role ?? "Student")}");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return Content(content, "application/json");
+            }
+        }
+        catch { }
+        return Json(new { userCode = "" });
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateUser(AdminCreateUserRequest request)
     {
@@ -980,8 +1327,41 @@ public class AdminController : Controller
                 TempData["SuccessMessage"] = "Thêm người dùng mới thành công!";
                 return RedirectToAction("Users", new { role = request.Role });
             }
-            var errObj = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-            TempData["ErrorMessage"] = errObj?.Message ?? "Không thể thêm người dùng.";
+
+            var content = await response.Content.ReadAsStringAsync();
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(content);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("message", out var msgEl))
+                {
+                    TempData["ErrorMessage"] = msgEl.GetString();
+                }
+                else if (root.TryGetProperty("errors", out var errorsEl) && errorsEl.ValueKind == System.Text.Json.JsonValueKind.Object)
+                {
+                    var errors = new List<string>();
+                    foreach (var prop in errorsEl.EnumerateObject())
+                    {
+                        foreach (var err in prop.Value.EnumerateArray())
+                        {
+                            errors.Add(err.GetString() ?? "");
+                        }
+                    }
+                    TempData["ErrorMessage"] = string.Join("; ", errors.Where(e => !string.IsNullOrEmpty(e)));
+                }
+                else if (root.TryGetProperty("title", out var titleEl))
+                {
+                    TempData["ErrorMessage"] = titleEl.GetString();
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "Không thể thêm người dùng.";
+                }
+            }
+            catch
+            {
+                TempData["ErrorMessage"] = !string.IsNullOrWhiteSpace(content) ? content : "Không thể thêm người dùng.";
+            }
         }
         catch
         {
@@ -1293,10 +1673,27 @@ public class AdminController : Controller
         {
             var classInfo = await classClient.GetFromJsonAsync<ClassViewModel>($"classes/{id}");
             var schoolYear = classInfo?.SchoolYear ?? "2025-2026";
-            var homeroom = await classClient.GetFromJsonAsync<HomeroomAssignmentViewModel>(
-                $"classes/{id}/homeroom?schoolYear={Uri.EscapeDataString(schoolYear)}"
-            );
-            return Json(new { success = true, homeroom });
+            HomeroomAssignmentViewModel? homeroom = null;
+            try
+            {
+                homeroom = await classClient.GetFromJsonAsync<HomeroomAssignmentViewModel>(
+                    $"classes/{id}/homeroom?schoolYear={Uri.EscapeDataString(schoolYear)}"
+                );
+            }
+            catch { }
+
+            if ((homeroom == null || string.IsNullOrEmpty(homeroom.TeacherName)) && classInfo != null && classInfo.HomeroomTeacherId.HasValue && !string.IsNullOrEmpty(classInfo.HomeroomTeacherName))
+            {
+                homeroom = new HomeroomAssignmentViewModel
+                {
+                    ClassId = classInfo.Id,
+                    TeacherId = classInfo.HomeroomTeacherId.Value,
+                    TeacherName = classInfo.HomeroomTeacherName,
+                    TeacherCode = classInfo.HomeroomTeacherCode ?? string.Empty,
+                    SchoolYear = classInfo.SchoolYear
+                };
+            }
+            return Json(new { success = homeroom != null, homeroom });
         }
         catch
         {
@@ -1518,7 +1915,9 @@ public class AdminController : Controller
             );
             if (response != null)
             {
-                classes = response.ToList();
+                classes = response
+                    .Where(c => c.CurrentStudentCount > 0 && c.HomeroomTeacherId != null)
+                    .ToList();
             }
         }
         catch { }
@@ -1546,6 +1945,31 @@ public class AdminController : Controller
             var students = await classClient.GetFromJsonAsync<IEnumerable<StudentClassViewModel>>(
                 $"student-classes/classes/{classId}/students?onlyCurrent=true"
             );
+            if (students != null && students.Any())
+            {
+                var scoreClient = _clientFactory.CreateClient("ScoreService");
+                var currentClass = await classClient.GetFromJsonAsync<ClassViewModel>($"classes/{classId}");
+                var schoolYear = currentClass?.SchoolYear ?? "";
+
+                // Fetch GPA for each student concurrently
+                var tasks = students.Select(async s =>
+                {
+                    try
+                    {
+                        var scores = await scoreClient.GetFromJsonAsync<IEnumerable<ScoreResponseViewModel>>(
+                            $"scores/student/{s.StudentId}?schoolYear={schoolYear}"
+                        );
+                        if (scores != null && scores.Any())
+                        {
+                            // simple average GPA calculation across all scores for display purpose
+                            s.GPA = Math.Round((double)scores.Average(x => x.ScoreValue), 2);
+                        }
+                    }
+                    catch { } // Ignore if score service fails or student has no scores
+                });
+                await Task.WhenAll(tasks);
+            }
+            
             return Json(new { success = true, students });
         }
         catch (Exception ex)
@@ -1590,13 +2014,22 @@ public class AdminController : Controller
             var allClasses = await classClient.GetFromJsonAsync<IEnumerable<ClassViewModel>>(
                 "classes"
             );
-            var targetClasses =
-                allClasses
-                    ?.Where(c =>
-                        c.GradeLevel == currentClass.GradeLevel + 1 && c.SchoolYear == nextYear
-                    )
-                    .ToList()
-                ?? new List<ClassViewModel>();
+            
+            var promotionTargetClasses = allClasses
+                ?.Where(c =>
+                    c.GradeLevel == currentClass.GradeLevel + 1 && 
+                    c.SchoolYear == nextYear &&
+                    c.CurrentStudentCount < c.Capacity
+                )
+                .ToList() ?? new List<ClassViewModel>();
+
+            var retentionTargetClasses = allClasses
+                ?.Where(c =>
+                    c.GradeLevel == currentClass.GradeLevel && 
+                    c.SchoolYear == nextYear &&
+                    c.CurrentStudentCount < c.Capacity
+                )
+                .ToList() ?? new List<ClassViewModel>();
 
             return Json(
                 new
@@ -1604,7 +2037,8 @@ public class AdminController : Controller
                     success = true,
                     isGrade12 = false,
                     targetSchoolYear = nextYear,
-                    targetClasses,
+                    promotionTargetClasses,
+                    retentionTargetClasses
                 }
             );
         }

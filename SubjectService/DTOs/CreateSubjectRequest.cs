@@ -15,4 +15,6 @@ public class CreateSubjectRequest
 
     [Range(1, 12, ErrorMessage = "Khối lớp phải nằm trong khoảng từ 1 đến 12")]
     public int GradeLevel { get; set; }
+
+    public bool IsActive { get; set; } = true;
 }

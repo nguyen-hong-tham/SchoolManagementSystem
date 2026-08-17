@@ -14,11 +14,11 @@ public static class DbInitializer
         // Tự động chạy migration
         await context.Database.MigrateAsync();
 
-        // Xóa sạch dữ liệu cũ
-        context.Scores.RemoveRange(context.Scores);
-        context.CachedUsers.RemoveRange(context.CachedUsers);
-        context.CachedSubjects.RemoveRange(context.CachedSubjects);
-        await context.SaveChangesAsync();
+        // Chỉ seed dữ liệu mẫu khi database chưa có điểm số
+        if (await context.Scores.AnyAsync())
+        {
+            return;
+        }
 
         // 1. Seed CachedUsers (1 Admin, 4 Teachers, 20 Students)
         var cachedUsers = new List<CachedUser>

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ClassService.Data;
 using ClassService.DTOs.TeachingAssignments;
 using ClassService.Entities;
+using ClassService.Helpers;
 using ClassService.Repositories.Interfaces;
 using ClassService.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -40,9 +41,10 @@ public class TeachingAssignmentService : ITeachingAssignmentService
             throw new KeyNotFoundException($"Không tìm thấy lớp học với ID: {classId}");
         }
 
-        // Kiểm tra giáo viên từ bảng đệm CachedUsers
-        var cachedTeacher = await _dbContext.CachedUsers.FirstOrDefaultAsync(u =>
-            u.Id == dto.TeacherId
+        // Kiểm tra giáo viên từ bảng đệm CachedUsers (tự động fallback sang UserService nếu chưa cache)
+        var cachedTeacher = await UserCacheHelper.GetOrFetchCachedUserAsync(
+            _dbContext,
+            dto.TeacherId
         );
         if (cachedTeacher == null)
         {
@@ -109,9 +111,10 @@ public class TeachingAssignmentService : ITeachingAssignmentService
             throw new KeyNotFoundException($"Không tìm thấy lớp học với ID: {classId}");
         }
 
-        // Kiểm tra giáo viên từ bảng đệm CachedUsers
-        var cachedTeacher = await _dbContext.CachedUsers.FirstOrDefaultAsync(u =>
-            u.Id == dto.TeacherId
+        // Kiểm tra giáo viên từ bảng đệm CachedUsers (tự động fallback sang UserService nếu chưa cache)
+        var cachedTeacher = await UserCacheHelper.GetOrFetchCachedUserAsync(
+            _dbContext,
+            dto.TeacherId
         );
         if (cachedTeacher == null)
         {
@@ -201,6 +204,7 @@ public class TeachingAssignmentService : ITeachingAssignmentService
                     TeacherName = teacher?.FullName ?? string.Empty,
                     TeacherCode = teacher?.UserCode ?? string.Empty,
                     SubjectName = subject?.Name ?? string.Empty,
+                    ClassName = targetClass.Name,
                 };
             })
             .ToList();
@@ -233,10 +237,13 @@ public class TeachingAssignmentService : ITeachingAssignmentService
             .CachedSubjects.Where(s => subjectIds.Contains(s.Id))
             .ToListAsync();
 
+        var classes = await _classRepository.GetAllAsync();
+
         return assignments
             .Select(entity =>
             {
                 var subject = subjects.FirstOrDefault(s => s.Id == entity.SubjectId);
+                var targetClass = classes.FirstOrDefault(c => c.Id == entity.ClassId);
                 return new TeachingAssignmentResponseDto
                 {
                     Id = entity.Id,
@@ -248,6 +255,7 @@ public class TeachingAssignmentService : ITeachingAssignmentService
                     TeacherName = teacher?.FullName ?? string.Empty,
                     TeacherCode = teacher?.UserCode ?? string.Empty,
                     SubjectName = subject?.Name ?? string.Empty,
+                    ClassName = targetClass?.Name ?? string.Empty,
                 };
             })
             .ToList();
@@ -286,6 +294,7 @@ public class TeachingAssignmentService : ITeachingAssignmentService
             {
                 var teacher = teachers.FirstOrDefault(t => t.Id == entity.TeacherId);
                 var subject = subjects.FirstOrDefault(s => s.Id == entity.SubjectId);
+                var targetClass = classes.FirstOrDefault(c => c.Id == entity.ClassId);
                 return new TeachingAssignmentResponseDto
                 {
                     Id = entity.Id,
@@ -297,6 +306,7 @@ public class TeachingAssignmentService : ITeachingAssignmentService
                     TeacherName = teacher?.FullName ?? string.Empty,
                     TeacherCode = teacher?.UserCode ?? string.Empty,
                     SubjectName = subject?.Name ?? string.Empty,
+                    ClassName = targetClass?.Name ?? string.Empty,
                 };
             })
             .ToList();

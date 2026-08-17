@@ -18,6 +18,11 @@ public class ScheduleRepository : IScheduleRepository
         _context = context;
     }
 
+    public async Task<Schedule?> GetByIdAsync(Guid id)
+    {
+        return await _context.Schedules.FirstOrDefaultAsync(x => x.Id == id);
+    }
+
     public async Task<List<Schedule>> GetScheduleByClassAsync(Guid classId, string schoolYear)
     {
         return await _context.Schedules
@@ -32,22 +37,34 @@ public class ScheduleRepository : IScheduleRepository
             .ToListAsync();
     }
 
-    public async Task<Schedule?> CheckTeacherCollisionAsync(Guid teacherId, int dayOfWeek, int period, string schoolYear)
+    public async Task<Schedule?> CheckTeacherCollisionAsync(Guid teacherId, int dayOfWeek, int period, string schoolYear, Guid? excludeId = null)
     {
-        return await _context.Schedules
-            .FirstOrDefaultAsync(x => x.TeacherId == teacherId && x.DayOfWeek == dayOfWeek && x.Period == period && x.SchoolYear == schoolYear);
+        var query = _context.Schedules.Where(x => x.TeacherId == teacherId && x.DayOfWeek == dayOfWeek && x.Period == period && x.SchoolYear == schoolYear);
+        if (excludeId.HasValue)
+        {
+            query = query.Where(x => x.Id != excludeId.Value);
+        }
+        return await query.FirstOrDefaultAsync();
     }
 
-    public async Task<Schedule?> CheckRoomCollisionAsync(string room, int dayOfWeek, int period, string schoolYear)
+    public async Task<Schedule?> CheckRoomCollisionAsync(string room, int dayOfWeek, int period, string schoolYear, Guid? excludeId = null)
     {
-        return await _context.Schedules
-            .FirstOrDefaultAsync(x => x.Room == room && x.DayOfWeek == dayOfWeek && x.Period == period && x.SchoolYear == schoolYear);
+        var query = _context.Schedules.Where(x => x.Room == room && x.DayOfWeek == dayOfWeek && x.Period == period && x.SchoolYear == schoolYear);
+        if (excludeId.HasValue)
+        {
+            query = query.Where(x => x.Id != excludeId.Value);
+        }
+        return await query.FirstOrDefaultAsync();
     }
 
-    public async Task<Schedule?> CheckClassCollisionAsync(Guid classId, int dayOfWeek, int period, string schoolYear)
+    public async Task<Schedule?> CheckClassCollisionAsync(Guid classId, int dayOfWeek, int period, string schoolYear, Guid? excludeId = null)
     {
-        return await _context.Schedules
-            .FirstOrDefaultAsync(x => x.ClassId == classId && x.DayOfWeek == dayOfWeek && x.Period == period && x.SchoolYear == schoolYear);
+        var query = _context.Schedules.Where(x => x.ClassId == classId && x.DayOfWeek == dayOfWeek && x.Period == period && x.SchoolYear == schoolYear);
+        if (excludeId.HasValue)
+        {
+            query = query.Where(x => x.Id != excludeId.Value);
+        }
+        return await query.FirstOrDefaultAsync();
     }
 
     public async Task AddAsync(Schedule entity)
@@ -58,6 +75,14 @@ public class ScheduleRepository : IScheduleRepository
     public void Delete(Schedule entity)
     {
         _context.Schedules.Remove(entity);
+    }
+
+    public async Task ClearClassScheduleAsync(Guid classId, string schoolYear)
+    {
+        var items = await _context.Schedules
+            .Where(x => x.ClassId == classId && x.SchoolYear == schoolYear)
+            .ToListAsync();
+        _context.Schedules.RemoveRange(items);
     }
 
     public async Task SaveChangesAsync()

@@ -39,7 +39,7 @@ public class AdminCreateUserRequest
     [Required(ErrorMessage = "Vai trò là bắt buộc")]
     public string Role { get; set; } = string.Empty; // "Admin", "Teacher", "Student"
 
-    [Required(ErrorMessage = "Mã số (học sinh/giáo viên) là bắt buộc")]
+    [Required(ErrorMessage = "Mã số định danh là bắt buộc")]
     public string UserCode { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Giới tính là bắt buộc")]
@@ -48,7 +48,7 @@ public class AdminCreateUserRequest
     [Required(ErrorMessage = "Ngày sinh là bắt buộc")]
     [DataType(DataType.Date)]
     [PastDate(ErrorMessage = "Ngày sinh không được ở tương lai.")]
-    public DateTime DateOfBirth { get; set; } = DateTime.Today.AddYears(-15);
+    public DateTime DateOfBirth { get; set; } = DateTime.Today.AddYears(-16);
 
     [Phone(ErrorMessage = "Số điện thoại không hợp lệ")]
     public string? PhoneNumber { get; set; } = string.Empty;
@@ -79,7 +79,7 @@ public class UpdateUserRequest
     [EmailAddress(ErrorMessage = "Định dạng email không hợp lệ")]
     public string Email { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Mã số (học sinh/giáo viên) là bắt buộc")]
+    [Required(ErrorMessage = "Mã số định danh là bắt buộc")]
     public string UserCode { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Giới tính là bắt buộc")]

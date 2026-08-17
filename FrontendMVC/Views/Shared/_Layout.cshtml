@@ -7,7 +7,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - School Management</title>
+    <title>@ViewData["Title"] - High School Management System</title>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <script src="~/js/site.js" asp-append-version="true" defer></script>
 </head>
@@ -17,7 +17,7 @@
         <!-- Sidebar -->
         <aside class="app-sidebar">
             <div class="sidebar-brand">
-                UNIVERSITY SYSTEM
+                 SCHOOL SYSTEM
             </div>
             <ul class="sidebar-menu">
                 @if (role == "Admin")
@@ -37,7 +37,7 @@
                     <li class="sidebar-item-collapsible">
                         <a href="javascript:void(0);" class="sidebar-collapsible-trigger" id="user-mgmt-trigger" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <span>Quản lý người dùng</span>
-                            <span class="chevron" style="font-size: 0.75rem; font-weight: bold;">▶</span>
+                            <span class="chevron" style="font-size: 0.75rem; font-weight: bold;"></span>
                         </a>
                         <ul class="sidebar-submenu" id="user-mgmt-submenu">
                             <li class="submenu-item" id="menu-all-users">
@@ -89,11 +89,23 @@
             <main role="main">
                 @if (TempData["SuccessMessage"] != null)
                 {
-                    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {
+                            if (window.showToast) {
+                                window.showToast('success', '@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(TempData["SuccessMessage"]?.ToString()))');
+                            }
+                        });
+                    </script>
                 }
                 @if (TempData["ErrorMessage"] != null)
                 {
-                    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {
+                            if (window.showToast) {
+                                window.showToast('error', '@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(TempData["ErrorMessage"]?.ToString()))');
+                            }
+                        });
+                    </script>
                 }
                 @RenderBody()
             </main>
@@ -186,7 +198,7 @@
                         chevron.innerText = "▼";
                     } else {
                         submenu.classList.remove("open");
-                        chevron.innerText = "▶";
+                        chevron.innerText = "";
                     }
                 }
                 
@@ -228,6 +240,15 @@
                     trigger.classList.add("parent-active");
                 }
             }
+
+            // Auto-dismiss static alerts after 4 seconds
+            setTimeout(function () {
+                document.querySelectorAll('.alert').forEach(function (alert) {
+                    alert.style.transition = 'opacity 0.5s ease';
+                    alert.style.opacity = '0';
+                    setTimeout(function () { alert.remove(); }, 500);
+                });
+            }, 4000);
         });
     </script>
 </body>

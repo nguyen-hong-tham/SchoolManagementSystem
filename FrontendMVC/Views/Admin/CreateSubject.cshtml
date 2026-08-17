@@ -5,36 +5,51 @@
 }
 
 <div class="mb-3">
-    <a asp-action="Subjects" class="btn btn-secondary" style="padding: 8px 16px; text-decoration: none;">← Quay lại danh sách môn học</a>
+    <a asp-action="Subjects" class="btn btn-secondary" style="padding: 8px 16px; text-decoration: none; border-radius: 8px;">← Quay lại danh sách môn học</a>
 </div>
 
-<div class="custom-card" style="max-width: 600px; margin: 0 auto;">
-    <h3 style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">Thêm Môn Học Mới</h3>
+<div class="custom-card" style="max-width: 620px; margin: 0 auto; padding: 28px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.05);">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
+        <div style="width: 44px; height: 44px; border-radius: 10px; background-color: #ede9fe; color: #6366f1; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+            
+        </div>
+        <div>
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: #0f172a; margin-bottom: 2px;">Thêm Môn Học Mới</h3>
+            <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 0;">Khai báo mã môn học chuẩn và thiết lập trạng thái giảng dạy</p>
+        </div>
+    </div>
 
-    <form asp-action="CreateSubject" method="post">
+    <form asp-action="CreateSubject" method="post" id="createSubjectForm">
         <div asp-validation-summary="ModelOnly" class="text-danger" style="margin-bottom: 15px; font-size: 0.9rem;"></div>
 
-        <div class="form-group">
-            <label asp-for="Code" class="form-label">Mã môn học</label>
-            <input asp-for="Code" class="form-control" placeholder="Ví dụ: TOAN10, NGUVAN11" required />
+        <!-- Mã môn học -->
+        <div class="form-group" style="margin-bottom: 18px;">
+            <label asp-for="Code" class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 6px;">
+                Mã môn học <span class="text-danger">*</span>
+            </label>
+            <div style="position: relative;">
+                <input asp-for="Code" id="subjectCodeInput" class="form-control" placeholder="Ví dụ: TOAN10, NGUVAN11, ANH12" required style="font-family: monospace; font-weight: 700; text-transform: uppercase; padding: 10px 14px; border-radius: 8px;" />
+                <span id="codeCheckSpinner" style="display: none; position: absolute; right: 12px; top: 10px; font-size: 0.9rem;">⏳</span>
+            </div>
+            <div id="codeFeedback" style="font-size: 0.82rem; margin-top: 5px; font-weight: 500;"></div>
             <span asp-validation-for="Code" class="text-danger" style="font-size: 0.8rem;"></span>
         </div>
 
-        <div class="form-group">
-            <label asp-for="Name" class="form-label">Tên môn học</label>
-            <input asp-for="Name" class="form-control" placeholder="Ví dụ: Toán Học, Ngữ Văn" required />
+        <!-- Tên môn học -->
+        <div class="form-group" style="margin-bottom: 18px;">
+            <label asp-for="Name" class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 6px;">
+                Tên môn học <span class="text-danger">*</span>
+            </label>
+            <input asp-for="Name" class="form-control" placeholder="Ví dụ: Toán Học, Ngữ Văn, Tiếng Anh" required style="padding: 10px 14px; border-radius: 8px;" />
             <span asp-validation-for="Name" class="text-danger" style="font-size: 0.8rem;"></span>
         </div>
 
-        <div class="form-group">
-            <label asp-for="Description" class="form-label">Mô tả môn học</label>
-            <textarea asp-for="Description" class="form-control" rows="3" placeholder="Nhập mô tả môn học..." style="resize: vertical;"></textarea>
-            <span asp-validation-for="Description" class="text-danger" style="font-size: 0.8rem;"></span>
-        </div>
-
-        <div class="form-group">
-            <label asp-for="GradeLevel" class="form-label">Khối lớp áp dụng</label>
-            <select asp-for="GradeLevel" class="form-control" required>
+        <!-- Khối lớp áp dụng -->
+        <div class="form-group" style="margin-bottom: 18px;">
+            <label asp-for="GradeLevel" class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 6px;">
+                Khối lớp áp dụng <span class="text-danger">*</span>
+            </label>
+            <select asp-for="GradeLevel" class="form-control" required style="padding: 10px 14px; border-radius: 8px;">
                 <option value="10">Khối 10</option>
                 <option value="11">Khối 11</option>
                 <option value="12">Khối 12</option>
@@ -42,9 +57,114 @@
             <span asp-validation-for="GradeLevel" class="text-danger" style="font-size: 0.8rem;"></span>
         </div>
 
-        <div style="display: flex; gap: 12px; margin-top: 25px;">
-            <button type="submit" class="btn btn-primary" style="flex: 1; padding: 12px;">Lưu môn học</button>
-            <a asp-action="Subjects" class="btn btn-secondary" style="flex: 1; padding: 12px; text-align: center; text-decoration: none;">Hủy</a>
+        <!-- Trạng thái hoạt động -->
+        <div class="form-group" style="margin-bottom: 18px;">
+            <label asp-for="IsActive" class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 6px;">
+                Trạng thái giảng dạy
+            </label>
+            <select asp-for="IsActive" class="form-control" style="padding: 10px 14px; border-radius: 8px;">
+                <option value="true" selected> Đang giảng dạy (Được phép phân công)</option>
+                <option value="false"> Ngừng giảng dạy (Tạm ẩn)</option>
+            </select>
+        </div>
+
+        <!-- Mô tả -->
+        <div class="form-group" style="margin-bottom: 24px;">
+            <label asp-for="Description" class="form-label" style="font-weight: 600; color: #334155; margin-bottom: 6px;">
+                Mô tả môn học
+            </label>
+            <textarea asp-for="Description" class="form-control" rows="3" placeholder="Nhập mô tả chương trình học hoặc tài liệu tham khảo..." style="resize: vertical; padding: 10px 14px; border-radius: 8px;"></textarea>
+            <span asp-validation-for="Description" class="text-danger" style="font-size: 0.8rem;"></span>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+            <button type="submit" id="saveSubjectBtn" class="btn btn-primary" style="flex: 1; padding: 12px; font-weight: 600; border-radius: 8px;">
+                 Lưu môn học
+            </button>
+            <a asp-action="Subjects" class="btn btn-secondary" style="flex: 1; padding: 12px; text-align: center; text-decoration: none; border-radius: 8px;">
+                Hủy
+            </a>
         </div>
     </form>
 </div>
+
+<script>
+    let codeDebounceTimer = null;
+    let isCodeValid = false;
+
+    const codeInput = document.getElementById('subjectCodeInput');
+    const nameInput = document.getElementById('Name');
+    const gradeSelect = document.getElementById('GradeLevel');
+    const feedback = document.getElementById('codeFeedback');
+    const spinner = document.getElementById('codeCheckSpinner');
+    const saveBtn = document.getElementById('saveSubjectBtn');
+
+    function removeAccents(str) {
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+    }
+
+    function autoGenerateCode() {
+        const name = nameInput.value.trim();
+        const grade = gradeSelect.value;
+        if (name && grade) {
+            let baseCode = removeAccents(name).toUpperCase().replace(/[^A-Z0-9_]/g, '');
+            if (baseCode) {
+                codeInput.value = baseCode + grade;
+                triggerCodeCheck();
+            }
+        }
+    }
+
+    nameInput.addEventListener('input', autoGenerateCode);
+    gradeSelect.addEventListener('change', autoGenerateCode);
+
+    function triggerCodeCheck() {
+        codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9_]/g, '');
+        const code = codeInput.value.trim();
+
+        clearTimeout(codeDebounceTimer);
+        feedback.innerText = '';
+        feedback.className = '';
+        codeInput.style.borderColor = '';
+
+        if (!code) {
+            isCodeValid = false;
+            return;
+        }
+
+        spinner.style.display = 'inline';
+
+        codeDebounceTimer = setTimeout(async () => {
+            try {
+                const resp = await fetch(`/Admin/CheckSubjectCode?code=${encodeURIComponent(code)}`);
+                const data = await resp.json();
+                spinner.style.display = 'none';
+
+                if (data.isTaken) {
+                    isCodeValid = false;
+                    codeInput.style.borderColor = '#ef4444';
+                    feedback.style.color = '#dc2626';
+                    feedback.innerText = `❌ Mã môn '${code}' đã tồn tại trên hệ thống. Vui lòng chọn mã khác.`;
+                    saveBtn.disabled = true;
+                } else {
+                    isCodeValid = true;
+                    codeInput.style.borderColor = '#22c55e';
+                    feedback.style.color = '#16a34a';
+                    feedback.innerText = ` Mã môn '${code}' hợp lệ và sẵn sàng sử dụng.`;
+                    saveBtn.disabled = false;
+                }
+            } catch (err) {
+                spinner.style.display = 'none';
+            }
+        }, 350);
+    }
+
+    codeInput.addEventListener('input', triggerCodeCheck);
+
+    document.getElementById('createSubjectForm').addEventListener('submit', function (e) {
+        if (!codeInput.value.trim()) {
+            e.preventDefault();
+            codeInput.focus();
+        }
+    });
+</script>

@@ -16,15 +16,7 @@ public class StudentClassRepository : IStudentClassRepository
 
     public async Task<List<StudentClass>> GetStudentsByClassIdAsync(Guid classId, bool onlyCurrent = false)
     {
-        var query = _context.StudentClasses.Where(x => x.ClassId == classId);
-        if (onlyCurrent)
-        {
-            query = query.Where(x => x.IsCurrent);
-        }
-        else
-        {
-            query = query.Where(x => x.PromotionStatus != "Transferred");
-        }
+        var query = _context.StudentClasses.Where(x => x.ClassId == classId && x.IsCurrent);
         return await query.ToListAsync();
     }
 

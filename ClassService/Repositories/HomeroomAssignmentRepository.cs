@@ -23,9 +23,18 @@ public class HomeroomAssignmentRepository : IHomeroomAssignmentRepository
         string schoolYear
     )
     {
-        return await _context.HomeroomAssignments.FirstOrDefaultAsync(x =>
-            x.ClassId == classId && x.SchoolYear == schoolYear
+        var cleanYear = (schoolYear ?? "").Trim();
+        var assignment = await _context.HomeroomAssignments.FirstOrDefaultAsync(x =>
+            x.ClassId == classId && x.SchoolYear == cleanYear
         );
+        if (assignment == null)
+        {
+            assignment = await _context.HomeroomAssignments
+                .Where(x => x.ClassId == classId)
+                .OrderByDescending(x => x.AssignedDate)
+                .FirstOrDefaultAsync();
+        }
+        return assignment;
     }
 
     public async Task<List<HomeroomAssignment>> GetHistoryByTeacherAsync(Guid teacherId)

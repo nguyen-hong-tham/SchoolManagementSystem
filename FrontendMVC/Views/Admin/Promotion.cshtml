@@ -272,11 +272,12 @@
                         <th style="width: 180px;">Mã Học Sinh</th>
                         <th>Họ và Tên</th>
                         <th>Ngày Nhập Lớp</th>
+                        <th style="width: 120px;">Điểm TB (GPA)</th>
                     </tr>
                 </thead>
                 <tbody id="studentTableBody">
                     <tr>
-                        <td colspan="5" class="text-center text-muted" style="padding: 50px 0; font-style: italic;">
+                        <td colspan="6" class="text-center text-muted" style="padding: 50px 0; font-style: italic;">
                             Vui lòng chọn Năm học và Lớp học hiện tại để tải danh sách học sinh.
                         </td>
                     </tr>
@@ -323,7 +324,7 @@
             </div>
 
             <div style="margin-top: 20px; font-size: 0.9rem; color: var(--color-text-light); border-top: 1px solid var(--border-color); padding-top: 15px;">
-                <p>⚠️ <strong>Lưu ý:</strong> Hành động này sẽ khóa phân lớp học hiện tại (IsCurrent = false) của các học sinh trên và chuyển/lên lớp hoặc đổi vai trò của họ sang Tốt nghiệp trong hệ thống.</p>
+                <p> <strong>Lưu ý:</strong> Hành động này sẽ khóa phân lớp học hiện tại (IsCurrent = false) của các học sinh trên và chuyển/lên lớp hoặc đổi vai trò của họ sang Tốt nghiệp trong hệ thống.</p>
             </div>
         </div>
         <div class="modal-footer" id="modalFooter">
@@ -427,19 +428,43 @@
                     } else {
                         targetYearInput.value = targetsData.targetSchoolYear;
                         
-                        if (!targetsData.targetClasses || targetsData.targetClasses.length === 0) {
-                            showPageError(`Không tìm thấy lớp học cho năm học ${targetsData.targetSchoolYear}. Vui lòng tạo lớp học trước khi thực hiện lên lớp.`);
+                        targetYearInput.value = targetsData.targetSchoolYear;
+                        
+                        const promotions = targetsData.promotionTargetClasses || [];
+                        const retentions = targetsData.retentionTargetClasses || [];
+
+                        if (promotions.length === 0 && retentions.length === 0) {
+                            showPageError(`Không tìm thấy lớp học trống cho năm học ${targetsData.targetSchoolYear}. Vui lòng tạo lớp học trước khi thực hiện lên lớp.`);
                             targetClassSelect.innerHTML = '<option value="">-- Không tìm thấy lớp học --</option>';
                             targetClassSelect.disabled = true;
                             btnPreview.disabled = true;
                         } else {
                             targetClassSelect.innerHTML = '<option value="">-- Chọn phân lớp học --</option>';
-                            targetsData.targetClasses.forEach(c => {
-                                const opt = document.createElement("option");
-                                opt.value = c.id;
-                                opt.text = `${c.name} (Năm học ${c.schoolYear})`;
-                                targetClassSelect.appendChild(opt);
-                            });
+                            
+                            if (promotions.length > 0) {
+                                const optgroupPromo = document.createElement("optgroup");
+                                optgroupPromo.label = "Lên lớp (Khối tiếp theo)";
+                                promotions.forEach(c => {
+                                    const opt = document.createElement("option");
+                                    opt.value = c.id;
+                                    opt.text = `${c.name} (Sĩ số: ${c.currentStudentCount}/${c.capacity})`;
+                                    optgroupPromo.appendChild(opt);
+                                });
+                                targetClassSelect.appendChild(optgroupPromo);
+                            }
+
+                            if (retentions.length > 0) {
+                                const optgroupReten = document.createElement("optgroup");
+                                optgroupReten.label = "Lưu ban (Cùng khối)";
+                                retentions.forEach(c => {
+                                    const opt = document.createElement("option");
+                                    opt.value = c.id;
+                                    opt.text = `${c.name} (Sĩ số: ${c.currentStudentCount}/${c.capacity})`;
+                                    optgroupReten.appendChild(opt);
+                                });
+                                targetClassSelect.appendChild(optgroupReten);
+                            }
+                            
                             targetClassSelect.disabled = false;
                         }
                     }
@@ -482,7 +507,7 @@
         
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="text-center text-muted" style="padding: 50px 0; font-style: italic;">
+                <td colspan="6" class="text-center text-muted" style="padding: 50px 0; font-style: italic;">
                     Vui lòng chọn Năm học và Lớp học hiện tại để tải danh sách học sinh.
                 </td>
             </tr>
@@ -496,7 +521,7 @@
         const tbody = document.getElementById("studentTableBody");
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="text-center" style="padding: 40px 0;">
+                <td colspan="6" class="text-center" style="padding: 40px 0;">
                     <div class="spinner-container" style="padding: 10px 0;">
                         <div class="spinner" style="width: 30px; height: 30px; border-width: 3px;"></div>
                         <div>Đang tải học sinh...</div>
@@ -514,7 +539,7 @@
         if (!students || students.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="text-center text-muted" style="padding: 40px 0;">
+                    <td colspan="6" class="text-center text-muted" style="padding: 40px 0;">
                         Không tìm thấy học sinh nào đang hoạt động trong lớp học này.
                     </td>
                 </tr>
@@ -532,6 +557,11 @@
             
             // Date formatting
             const dateStr = s.assignedDate ? new Date(s.assignedDate).toLocaleDateString('vi-VN') : '—';
+            
+            // GPA formatting
+            const gpaBadge = s.gpa != null ? 
+                `<span style="font-weight: 600; color: ${s.gpa >= 5 ? 'var(--color-success)' : 'var(--color-danger)'};">${s.gpa.toFixed(1)}</span>` : 
+                `<span class="text-muted" style="font-size: 0.85rem;">Chưa có điểm</span>`;
 
             tr.innerHTML = `
                 <td class="checkbox-cell">
@@ -541,6 +571,7 @@
                 <td class="fw-bold">${s.studentCode}</td>
                 <td>${s.studentName}</td>
                 <td>${dateStr}</td>
+                <td>${gpaBadge}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -705,7 +736,7 @@
                     </div>
 
                     <div style="margin-top: 20px; font-size: 0.9rem; color: var(--color-text-light); border-top: 1px solid var(--border-color); padding-top: 15px;">
-                        <p>⚠️ <strong>Lưu ý:</strong> Hành động này sẽ khóa phân lớp học hiện tại (IsCurrent = false) của các học sinh trên và chuyển/lên lớp hoặc đổi vai trò của họ sang Tốt nghiệp trong hệ thống.</p>
+                        <p> <strong>Lưu ý:</strong> Hành động này sẽ khóa phân lớp học hiện tại (IsCurrent = false) của các học sinh trên và chuyển/lên lớp hoặc đổi vai trò của họ sang Tốt nghiệp trong hệ thống.</p>
                     </div>
                 `;
                 modalFooter.style.display = 'flex';

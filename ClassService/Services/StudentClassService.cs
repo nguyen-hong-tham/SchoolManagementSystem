@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using ClassService.Data;
 using ClassService.DTOs.StudentClasses;
 using ClassService.Entities;
+using ClassService.Helpers;
 using ClassService.Repositories.Interfaces;
 using ClassService.Services.Interfaces;
 using MassTransit;
@@ -43,9 +44,10 @@ public class StudentClassService : IStudentClassService
             throw new KeyNotFoundException($"Không tìm thấy lớp học với ID: {classId}");
         }
 
-        // truy vấn từ bảng đệm CachedUser thay vì gọi Api mạng sang userSerivce
-        var cachedStudent = await _dbContext.CachedUsers.FirstOrDefaultAsync(u =>
-            u.Id == dto.StudentId
+        // Truy vấn từ bảng đệm CachedUser (tự động fallback sang UserService nếu chưa cache)
+        var cachedStudent = await UserCacheHelper.GetOrFetchCachedUserAsync(
+            _dbContext,
+            dto.StudentId
         );
         if (cachedStudent == null)
         {
@@ -312,16 +314,22 @@ public class StudentClassService : IStudentClassService
     // Xóa học sinh khỏi lớp
     public async Task<bool> RemoveStudentAsync(Guid classId, Guid studentId)
     {
-        var currentAssignment = await _studentClassRepository.GetCurrentStudentClassAsync(
-            studentId
-        );
-        if (currentAssignment == null || currentAssignment.ClassId != classId)
+        var assignment = await _dbContext.StudentClasses
+            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.ClassId == classId && x.IsCurrent);
+
+        if (assignment == null)
+        {
+            assignment = await _dbContext.StudentClasses
+                .FirstOrDefaultAsync(x => x.StudentId == studentId && x.ClassId == classId);
+        }
+
+        if (assignment == null)
         {
             return false;
         }
 
-        currentAssignment.IsCurrent = false;
-        await _studentClassRepository.SaveChangesAsync();
+        _dbContext.StudentClasses.Remove(assignment);
+        await _dbContext.SaveChangesAsync();
 
         _ = Task.Run(async () =>
         {
@@ -385,7 +393,7 @@ public class StudentClassService : IStudentClassService
         bool IsIdempotent
     )> ValidatePromotionRulesAsync(Guid studentId, Class targetClass, string schoolYear)
     {
-        var student = await _dbContext.CachedUsers.FirstOrDefaultAsync(u => u.Id == studentId);
+        var student = await UserCacheHelper.GetOrFetchCachedUserAsync(_dbContext, studentId);
         if (student == null)
         {
             throw new KeyNotFoundException($"Không tìm thấy học sinh với ID: {studentId}");
@@ -453,7 +461,7 @@ public class StudentClassService : IStudentClassService
 
     private async Task<StudentClass> ValidateGraduationRulesAsync(Guid studentId)
     {
-        var student = await _dbContext.CachedUsers.FirstOrDefaultAsync(u => u.Id == studentId);
+        var student = await UserCacheHelper.GetOrFetchCachedUserAsync(_dbContext, studentId);
         if (student == null)
         {
             throw new KeyNotFoundException($"Không tìm thấy học sinh với ID: {studentId}");

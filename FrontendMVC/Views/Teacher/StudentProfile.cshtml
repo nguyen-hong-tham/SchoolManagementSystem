@@ -1,47 +1,53 @@
-@using FrontendMVC.Models
+@model FrontendMVC.Models.UserViewModel
 @{
-    var profile = ViewBag.Profile as UserViewModel;
-    var academicYears = ViewBag.AcademicYears as List<StudentAcademicYearViewModel> ?? new List<StudentAcademicYearViewModel>();
-    var currentSemester = (int)(ViewBag.Semester ?? 1);
-    var activeTab = (int)ViewBag.ActiveTab;
-    ViewData["Title"] = "Cổng Thông Tin Học Sinh";
+    ViewData["Title"] = "Hồ Sơ Học Sinh";
     Layout = "_Layout";
+    var classHistory = ViewBag.ClassHistory as List<FrontendMVC.Models.StudentClassViewModel> ?? new List<FrontendMVC.Models.StudentClassViewModel>();
+    var academicYears = ViewBag.AcademicYears as List<FrontendMVC.Models.StudentAcademicYearViewModel> ?? new List<FrontendMVC.Models.StudentAcademicYearViewModel>();
+    var currentSemester = (int)(ViewBag.Semester ?? 1);
+    var activeTab = (int)(ViewBag.ActiveTab ?? 0);
 }
 
-<div style="display: grid; grid-template-columns: 280px 1fr; gap: 30px; align-items: start;">
+<div style="margin-bottom: 20px;">
+    <a href="javascript:history.back()" class="text-muted" style="text-decoration: none; font-size: 0.95rem;">
+        <i class="fas fa-arrow-left" style="margin-right: 5px;"></i> Quay lại
+    </a>
+</div>
+
+<div style="display: grid; grid-template-columns: 320px 1fr; gap: 30px; align-items: start;">
     
-    <!-- Profile Info Card (Fixed on the Left) -->
-    <div class="custom-card" style="margin-bottom: 0; position: sticky; top: 20px;">
+    <!-- Profile Info Card -->
+    <div class="custom-card" style="margin-bottom: 0;">
         <div class="text-center" style="margin-bottom: 25px;">
-            <div class="avatar-placeholder" style="width: 80px; height: 80px; font-size: 2.2rem; background-color: #e0e7ff; color: var(--color-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; font-weight: 700;">
-                @(string.IsNullOrEmpty(profile?.FullName) ? "S" : profile.FullName[0].ToString().ToUpper())
+            <div class="avatar-placeholder" style="width: 100px; height: 100px; font-size: 2.5rem; background-color: #e0e7ff; color: var(--color-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; font-weight: 700;">
+                @(string.IsNullOrEmpty(Model.FullName) ? "S" : Model.FullName[0].ToString().ToUpper())
             </div>
-            <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-dark);">@profile?.FullName</h3>
+            <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-dark);">@Model.FullName</h3>
             <span class="badge badge-success" style="margin-top: 5px;">Học Sinh</span>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.95rem; border-top: 1px solid var(--border-color); padding-top: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 15px; font-size: 1rem; border-top: 1px solid var(--border-color); padding-top: 20px;">
             <div>
-                <span class="text-muted">Mã số học sinh:</span>
-                <div class="fw-bold" style="margin-top: 2px;">@profile?.UserCode</div>
+                <span class="text-muted" style="font-size: 0.9rem;">Mã số học sinh:</span>
+                <div class="fw-bold" style="margin-top: 2px;">@Model.UserCode</div>
             </div>
             <div>
-                <span class="text-muted">Lớp học hiện tại:</span>
+                <span class="text-muted" style="font-size: 0.9rem;">Lớp học hiện tại:</span>
                 <div class="fw-bold" style="margin-top: 2px; color: var(--color-primary);">
-                    @(academicYears.FirstOrDefault(y => y.IsCurrent)?.ClassName ?? "Chưa được phân lớp")
+                    @(classHistory.FirstOrDefault(y => y.IsCurrent)?.ClassName ?? "Chưa được phân lớp")
                 </div>
             </div>
             <div>
-                <span class="text-muted">Email liên hệ:</span>
-                <div class="fw-bold" style="margin-top: 2px;">@profile?.Email</div>
+                <span class="text-muted" style="font-size: 0.9rem;">Email liên hệ:</span>
+                <div class="fw-bold" style="margin-top: 2px;">@Model.Email</div>
             </div>
             <div>
-                <span class="text-muted">Số điện thoại:</span>
-                <div class="fw-bold" style="margin-top: 2px;">@profile?.PhoneNumber</div>
+                <span class="text-muted" style="font-size: 0.9rem;">Số điện thoại:</span>
+                <div class="fw-bold" style="margin-top: 2px;">@Model.PhoneNumber</div>
             </div>
             <div>
-                <span class="text-muted">Địa chỉ thường trú:</span>
-                <div class="fw-bold" style="margin-top: 2px;">@profile?.Address</div>
+                <span class="text-muted" style="font-size: 0.9rem;">Địa chỉ thường trú:</span>
+                <div class="fw-bold" style="margin-top: 2px;">@Model.Address</div>
             </div>
         </div>
     </div>
@@ -51,7 +57,7 @@
         @if (!academicYears.Any())
         {
             <div class="custom-card text-center text-muted" style="padding: 40px 0;">
-                Bạn chưa được phân vào lớp học nào. Vui lòng liên hệ Admin.
+                Học sinh chưa được phân vào lớp học nào.
             </div>
         }
         else
@@ -90,7 +96,8 @@
                                 <h3>Bảng Điểm Học Tập - Lớp @year.ClassName</h3>
                                 <span class="badge badge-primary">Năm học @year.SchoolYear</span>
                             </div>
-                            <form method="get" asp-action="Dashboard" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                            <form method="get" asp-action="StudentProfile" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                                <input type="hidden" name="studentId" value="@Model.Id" />
                                 <input type="hidden" name="activeTab" value="@i" />
                                 <label for="semesterSelect-@i" style="font-weight: 600; margin-bottom: 0;">Học kỳ:</label>
                                 <select id="semesterSelect-@i" name="semester" class="form-control" style="width: auto; display: inline-block; padding: 6px 12px;" onchange="this.form.submit()">
@@ -166,55 +173,10 @@
                         <p class="text-muted" style="font-size: 0.8rem; margin-top: 15px;">* Công thức tính TBM = (Miệng*1 + 15p*1 + 1Tiết*2 + GiữaKỳ*2 + CuốiKỳ*3) / Tổng hệ số.</p>
                     </div>
 
-                    <!-- Schedule Card -->
-                    <div class="custom-card">
-                        <div class="card-header-flex">
-                            <h3>Thời Khóa Biểu - Lớp @year.ClassName</h3>
-                        </div>
-
-                        @if (year.Schedules == null || !year.Schedules.Any())
-                        {
-                            <div class="text-center text-muted" style="padding: 20px 0;">Thời khóa biểu chưa được sắp lịch cho năm học này.</div>
-                        }
-                        else
-                        {
-                            <div class="schedule-grid">
-                                <div class="schedule-header">Tiết</div>
-                                <div class="schedule-header">Thứ Hai</div>
-                                <div class="schedule-header">Thứ Ba</div>
-                                <div class="schedule-header">Thứ Tư</div>
-                                <div class="schedule-header">Thứ Năm</div>
-                                <div class="schedule-header">Thứ Sáu</div>
-
-                                @for (int period = 1; period <= 10; period++)
-                                {
-                                    <div class="schedule-row">
-                                        <div class="schedule-cell period-header">Tiết @period</div>
-                                        @for (int day = 2; day <= 6; day++)
-                                        {
-                                            var item = year.Schedules?.FirstOrDefault(s => s.DayOfWeek == day && s.Period == period);
-                                            <div class="schedule-cell">
-                                                @if (item != null)
-                                                {
-                                                    <div class="schedule-item">
-                                                        <div class="sub">@item.SubjectName</div>
-                                                        <div class="teacher">GV: @item.TeacherName</div>
-                                                        <div class="room"> @item.Room</div>
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-
                 </div>
             }
         }
     </div>
-
 </div>
 
 <style>

@@ -61,6 +61,24 @@ Dự án được xây dựng với mục tiêu tối ưu hiệu năng chạy tr
 *   **Giải pháp:** Dùng **Nginx** cài trực tiếp trên máy chủ VPS làm API Gateway / Reverse Proxy.
 *   **Kết quả:** Nginx chỉ tốn **5MB RAM**, đảm nhận vai trò định tuyến cổng 80/443 của tên miền sang cổng `5281` của Frontend MVC. Đồng thời, toàn bộ 4 API microservices backend được giữ an toàn ẩn bên trong mạng nội bộ của Docker (`university-network`), không bị lộ ra ngoài internet.
 
+### 2.4. Mẫu thiết kế giao diện & Kiến trúc phần mềm (Presentation & Architectural Patterns)
+*   **Kiến trúc giao diện (BFF - Backend-For-Frontend kết hợp MVC):**
+    *   **BFF (Backend-For-Frontend):** Ứng dụng `FrontendMVC` là điểm đầu cuối duy nhất giao tiếp trực tiếp với client. Giúp bảo mật thông tin bằng cách lưu trữ **JWT Token** trong **Secure HTTP-Only Cookie**, ngăn ngừa hoàn toàn các cuộc tấn công XSS/CSRF.
+    *   **BearerTokenHandler:** Một `DelegatingHandler` tùy chỉnh được tích hợp vào `HttpClient` để tự động đọc JWT Token từ Cookie HttpOnly của request hiện tại và đính kèm vào Header `Authorization: Bearer <token>` trước khi gửi request tới các microservices.
+    *   **MVC (Model-View-Controller):** Sử dụng công nghệ ASP.NET Core MVC (Razor) để xử lý yêu cầu từ trình duyệt, giao tiếp API qua BFF, chuẩn bị ViewModel và thực hiện Server-Side Rendering (SSR) giúp trang tải nhanh và tối ưu hóa SEO.
+*   **Kiến trúc nội bộ Microservice:**
+    *   **Layered Architecture (Kiến trúc phân tầng):** Tổ chức mã nguồn trong mỗi dịch vụ theo mô hình Controller - Service - Repository phân tách rõ ràng trách nhiệm.
+        *   *Controller:* Điểm tiếp nhận request API và xác thực.
+        *   *Service:* Xử lý nghiệp vụ chính của dịch vụ.
+        *   *Repository:* Đảm nhiệm truy xuất cơ sở dữ liệu qua EF Core.
+        *   *Entities/Data:* Quản lý thực thể và sơ đồ ánh xạ schema database.
+
+### 2.5. Chiến lược nạp dữ liệu liên quan (Related Data Loading Strategies)
+Hệ thống sử dụng các giải pháp nạp dữ liệu tối ưu nhằm gánh tải cho VPS cấu hình thấp (1GB RAM):
+*   **Eager Loading trong cơ sở dữ liệu local:** EF Core sử dụng `.Include()` và `.ThenInclude()` để nạp đồng thời thực thể cha và thực thể con (Ví dụ: `Score` đi kèm với `Student` và `Subject`) thông qua phép JOIN SQL trong một lần kết nối mạng (roundtrip), giảm thiểu đáng kể số lượng truy vấn và tăng tốc độ xử lý dữ liệu.
+*   **Không sử dụng Lazy Loading:** Việc tránh dùng Lazy Loading giúp kiểm soát chính xác thời điểm dữ liệu được nạp từ DB và loại bỏ hoàn toàn các câu truy vấn ngầm ngoài ý muốn (N+1 Query Problem) gây chậm hệ thống.
+*   **Sao chép dữ liệu cục bộ (Local Caching / Data Replication):** Khi một microservice cần hiển thị hoặc kiểm tra thông tin liên quan từ một microservice khác (Ví dụ: `ClassService` cần hiển thị thông tin học sinh do `UserService` quản lý), hệ thống sẽ không thực hiện cuộc gọi API HTTP đồng bộ (gây trễ mạng và rủi ro sập dây chuyền). Thay vào đó, dữ liệu được sao chép bất đồng bộ qua sự kiện của RabbitMQ và lưu vào các bảng đệm local (`CachedUsers`, `CachedSubjects`). Khi nạp dữ liệu, microservice chỉ cần truy vấn trực tiếp bảng đệm này.
+
 ---
 
 ## 3. Hướng Dẫn Cài Đặt Hệ Thống

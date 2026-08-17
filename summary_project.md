@@ -117,6 +117,31 @@ Hệ thống được thiết kế gồm 4 dịch vụ độc lập, phối hợ
 *   **Nginx Reverse Proxy:** Nginx hoạt động như một API Gateway gọn nhẹ (chỉ tốn ~5MB RAM), gánh cổng HTTPS bảo mật SSL Let's Encrypt (Certbot) và định tuyến lưu lượng vào mạng nội bộ Docker.
 *   **RAM ảo hóa (Swap file 4GB):** Cấu hình thêm 4GB Swap file trên VPS SSD của Oracle Cloud. Điều này giải quyết triệt để lỗi Out of Memory (OOM) cho các tiến trình .NET khi chạy trên hệ thống RAM vật lý chỉ có 1GB.
 
+### 6. Mô hình Kiến trúc Phần mềm & Giao diện (Software & Presentation Architectural Patterns)
+*   **Mẫu Kiến trúc Giao diện (Presentation Architectural Pattern) - BFF kết hợp MVC:**
+    *   **BFF (Backend-For-Frontend) Pattern:** Đóng vai trò là cầu nối bảo mật giữa Client (trình duyệt) và các microservices ở Backend. Browser không gọi trực tiếp các API microservices. Thay vào đó, toàn bộ yêu cầu giao diện đều đi qua `FrontendMVC` (cổng 5281). FrontendMVC nhận diện phiên đăng nhập bằng JWT Token lưu trong **Cookie HttpOnly, Secure, SameSite=Strict** để tránh tấn công XSS/CSRF. Khi gọi API microservices qua mạng nội bộ Docker, `BearerTokenHandler` (một `DelegatingHandler` tự tạo) tự động đọc Cookie này và đính kèm vào header `Authorization: Bearer <token>`.
+    *   **MVC (Model-View-Controller) Pattern:** Ứng dụng client-side được tổ chức theo mô hình MVC cổ điển của ASP.NET Core:
+        *   **View:** Render mã HTML phía máy chủ (Server-Side Rendering) thông qua Razor View engine (`.cshtml`), giúp tối ưu SEO, tải trang nhanh hơn trên các thiết bị yếu và giảm tải cho client-side logic.
+        *   **Controller:** Tiếp nhận các action của người dùng từ browser, gọi API sang các microservices tương ứng (thông qua cơ chế BFF), chuẩn bị dữ liệu cho ViewModel, điều phối việc hiển thị View.
+        *   **Model/ViewModel:** Định nghĩa cấu trúc dữ liệu truyền tải giữa Controller và View để hiển thị thông tin học sinh, lớp học, điểm số.
+*   **Kiến trúc bên trong mỗi Microservice (Backend Architecture):**
+    *   **Layered Architecture (Kiến trúc phân tầng) & Controller-Service-Repository Pattern:** Mỗi microservice độc lập (`UserService`, `ClassService`, `SubjectService`, `ScoreService`) được tổ chức theo cấu trúc phân lớp chặt chẽ nhằm tăng cường khả năng bảo trì và kiểm thử tự động (Unit Test):
+        1.  **Presentation Layer (Controller):** Nhận request HTTP API, phân tích dữ liệu DTO đầu vào, kiểm tra phân quyền dựa trên vai trò (RBAC) và trả về HTTP Status Code.
+        2.  **Business Logic Layer (Service):** Nơi thực thi các nghiệp vụ cốt lõi của ứng dụng (ví dụ: tính toán điểm trung bình có trọng số, kiểm tra ràng buộc thời khóa biểu bị trùng, v.v.).
+        3.  **Data Access Layer (Repository):** Sử dụng Repository Pattern để cô lập logic truy xuất cơ sở dữ liệu với phần xử lý nghiệp vụ, giúp dễ dàng Mock dữ liệu khi viết Unit Test.
+        4.  **Data Layer (DbContext & Entities):** Định nghĩa Schema PostgreSQL riêng biệt trên Supabase và đại diện cho các thực thể lưu trữ dữ liệu.
+
+### 7. Chiến lược Tải dữ liệu & Nạp dữ liệu liên quan (Data Loading Strategies)
+Hệ thống kết hợp nhiều chiến lược nạp dữ liệu khác nhau ở cả cấp độ cục bộ (Database ORM) và cấp độ hệ thống phân tán (Microservices):
+*   **Chiến lược nạp dữ liệu cục bộ (Local ORM Data Loading với EF Core):**
+    *   **Eager Loading (Nạp dữ liệu háo hức):** Được sử dụng chủ yếu thông qua các phương thức `.Include()` và `.ThenInclude()` của EF Core. Ví dụ: Trong `ScoreRepository.cs`, hàm `GetScoresByStudentAsync` nạp đồng thời bản ghi điểm cùng với thông tin liên quan của Học sinh (`Student`) và Môn học (`Subject`) bằng cách thực hiện SQL JOIN. Điều này giúp giảm thiểu số lần truy vấn cơ sở dữ liệu (Database Roundtrips) và đảm bảo tính toàn vẹn dữ liệu khi xử lý logic điểm số phức tạp.
+    *   **Tránh Lazy Loading (Nạp dữ liệu lười):** Hệ thống chủ động tắt và không sử dụng cơ chế Lazy Loading. Việc tải dữ liệu lười có thể gây ra lỗi nghiêm trọng **N+1 Query Problem** (thực hiện thêm N câu lệnh SQL để lấy dữ liệu con cho N bản ghi cha), gây quá tải cơ sở dữ liệu PostgreSQL trên máy chủ VPS RAM 1GB.
+    *   **Explicit Loading (Nạp dữ liệu tường minh):** Chỉ nạp dữ liệu liên quan khi thực sự cần thiết thông qua API `DbContext.Entry(entity).Reference(...).Load()`, giúp tối ưu hóa hiệu năng cho các tiến trình xử lý hàng loạt không cần hiển thị giao diện.
+*   **Chiến lược nạp dữ liệu liên quan giữa các dịch vụ (Cross-Service Data Loading):**
+    *   **Local Cache & Data Replication (Sao chép dữ liệu cục bộ):** Đây là giải pháp then chốt cho bài toán nạp dữ liệu liên quan mà không vi phạm nguyên tắc độc lập của Microservices. Thay vì thực hiện cuộc gọi HTTP REST đồng bộ từ `ClassService` sang `UserService` mỗi khi cần lấy tên học sinh (gây nghẽn mạng và rủi ro sập hệ thống dây chuyền), dự án sử dụng **Event-Driven Architecture**.
+    *   **Cơ chế hoạt động:** Khi `UserService` có học sinh mới, nó phát ra `UserCreatedEvent`. `ClassService` và `ScoreService` bắt sự kiện này và lưu thông tin cơ bản của học sinh đó vào các bảng đệm local (`CachedUsers`, `CachedSubjects`). Khi nạp danh sách lớp hoặc điểm số, hệ thống chỉ cần JOIN trực tiếp với bảng `CachedUsers` tại schema của dịch vụ đó.
+    *   **Lợi ích:** Đạt tốc độ đọc dữ liệu tối đa (O(1) mạng), đảm bảo các dịch vụ hoạt động bình thường kể cả khi `UserService` ngoại tuyến.
+
 ---
 
 ## IV. CÁC ĐIỂM NỔI BẬT VÀ GIẢI PHÁP ĐẶC THÙ CỦA TỪNG SERVICE

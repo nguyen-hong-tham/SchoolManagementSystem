@@ -1386,8 +1386,8 @@
                 if (cell) {
                     cell.innerHTML = `
                         <div class="schedule-item" data-id="${item.id}" data-subject-id="${item.subjectId}" data-subject-name="${item.subjectName}" data-teacher-id="${item.teacherId}" data-teacher-name="${item.teacherName}" data-day="${item.dayOfWeek}" data-period="${item.period}" data-room="${item.room}" onclick="handleScheduleCellClick(event, '${item.id}')" style="background-color: #e0e7ff; border-left: 4px solid var(--color-primary); padding: 4px 6px; border-radius: 4px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; position: relative; cursor: pointer;">
-                            <button type="button" class="delete-schedule-btn" title="Xóa tiết học" onclick="confirmDeleteSchedule(event, '${item.id}')">
-                                <i class="fas fa-times"></i>
+                            <button type="button" class="delete-schedule-btn" title="Xóa tiết học" onclick="onDeleteScheduleBtnClick(event, '${item.id}', '${(item.subjectName || '').replace(/'/g, \"\\'\")}', '${(item.teacherName || '').replace(/'/g, \"\\'\")}', ${item.dayOfWeek}, ${item.period})">
+                                ✕
                             </button>
                             <div class="sub" style="font-weight: 700; color: #312e81; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.subjectName}</div>
                             <div class="teacher" style="color: #4338ca; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">GV: ${item.teacherName}</div>
@@ -1899,22 +1899,31 @@
 
         // 6. Delete Single Schedule Cell
         window.onDeleteScheduleBtnClick = function(e, id, subjectName, teacherName, day, period) {
-            e.stopPropagation(); // Don't trigger cell edit
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation(); // Don't trigger cell edit
+            }
             deleteScheduleTargetId = id;
 
             const textEl = document.getElementById('deleteScheduleConfirmText');
             if (textEl) {
-                textEl.innerHTML = `Bạn có chắc chắn muốn xóa tiết <strong>${subjectName}</strong> của giáo viên <strong>${teacherName}</strong> khỏi <strong>Tiết ${period} (${getDayName(day)})</strong> không?`;
+                textEl.innerHTML = `Bạn có chắc chắn muốn xóa tiết <strong>${subjectName || 'học'}</strong> của giáo viên <strong>${teacherName || 'này'}</strong> khỏi <strong>Tiết ${period} (${getDayName(day)})</strong> không?`;
             }
 
             const modal = document.getElementById('deleteScheduleModal');
-            if (modal) modal.style.display = 'flex';
+            if (modal) {
+                modal.style.display = 'flex';
+                setTimeout(() => modal.classList.add('show'), 10);
+            }
         };
 
         window.closeDeleteScheduleModal = function() {
             deleteScheduleTargetId = null;
             const modal = document.getElementById('deleteScheduleModal');
-            if (modal) modal.style.display = 'none';
+            if (modal) {
+                modal.classList.remove('show');
+                setTimeout(() => { modal.style.display = 'none'; }, 200);
+            }
         };
 
         window.executeDeleteSchedule = async function() {

@@ -22,8 +22,12 @@ builder.Services.AddMassTransit(x =>
     x.UsingRabbitMq(
         (context, cfg) =>
         {
+            ushort port = builder.Configuration.GetValue<ushort?>("MessageBroker:Port")
+                ?? (builder.Configuration.GetValue<bool>("MessageBroker:UseSsl") ? (ushort)5671 : (ushort)5672);
+
             cfg.Host(
                 builder.Configuration["MessageBroker:Host"] ?? "localhost",
+                port,
                 builder.Configuration["MessageBroker:VirtualHost"] ?? "/",
                 h =>
                 {

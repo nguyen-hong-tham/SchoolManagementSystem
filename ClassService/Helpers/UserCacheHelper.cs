@@ -6,10 +6,29 @@ using ClassService.Data;
 using ClassService.Entities;
 using Microsoft.EntityFrameworkCore;
 
+using Microsoft.Extensions.Configuration;
+
 namespace ClassService.Helpers;
 
 public static class UserCacheHelper
 {
+    private static IConfiguration? _configuration;
+
+    public static void Configure(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+
+    public static string GetUserServiceBaseUrl()
+    {
+        var url = _configuration?["Services:UserService"]
+            ?? _configuration?["Microservices:UserService"]
+            ?? Environment.GetEnvironmentVariable("SERVICES__USERSERVICE")
+            ?? Environment.GetEnvironmentVariable("MICROSERVICES__USERSERVICE")
+            ?? "http://localhost:5156/api";
+        return url.TrimEnd('/');
+    }
+
     public static async Task<CachedUser?> GetOrFetchCachedUserAsync(ApplicationDbContext dbContext, Guid userId)
     {
         var user = await dbContext.CachedUsers.FirstOrDefaultAsync(u => u.Id == userId);
@@ -17,9 +36,10 @@ public static class UserCacheHelper
 
         try
         {
+            var baseUrl = GetUserServiceBaseUrl();
             using var client = new HttpClient();
             client.Timeout = TimeSpan.FromSeconds(5);
-            var response = await client.GetAsync($"http://localhost:5156/api/users/internal/{userId}");
+            var response = await client.GetAsync($"{baseUrl}/users/internal/{userId}");
             if (response.IsSuccessStatusCode)
             {
                 var data = await response.Content.ReadFromJsonAsync<CachedUserDto>();

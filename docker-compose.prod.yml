@@ -18,6 +18,7 @@ services:
       - MessageBroker__Password=${CLOUDAMQP_PASSWORD}
       - MessageBroker__VirtualHost=${CLOUDAMQP_VIRTUALHOST}
       - MessageBroker__UseSsl=true
+      - MessageBroker__Port=5671
       - Jwt__Key=${JWT_KEY}
       - Jwt__Issuer=UserService
       - Jwt__Audience=UniversityManagement
@@ -42,11 +43,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=${SUPABASE_DB_CONNECTION}
+      - Services__UserService=http://user-service:8080/api
       - MessageBroker__Host=${CLOUDAMQP_HOST}
       - MessageBroker__Username=${CLOUDAMQP_USERNAME}
       - MessageBroker__Password=${CLOUDAMQP_PASSWORD}
       - MessageBroker__VirtualHost=${CLOUDAMQP_VIRTUALHOST}
       - MessageBroker__UseSsl=true
+      - MessageBroker__Port=5671
     deploy:
       resources:
         limits:
@@ -73,6 +76,7 @@ services:
       - MessageBroker__Password=${CLOUDAMQP_PASSWORD}
       - MessageBroker__VirtualHost=${CLOUDAMQP_VIRTUALHOST}
       - MessageBroker__UseSsl=true
+      - MessageBroker__Port=5671
       - Jwt__Key=${JWT_KEY}
       - Jwt__Issuer=UserService
       - Jwt__Audience=UniversityManagement
@@ -97,11 +101,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=${SUPABASE_DB_CONNECTION}
+      - Services__UserService=http://user-service:8080/api
       - MessageBroker__Host=${CLOUDAMQP_HOST}
       - MessageBroker__Username=${CLOUDAMQP_USERNAME}
       - MessageBroker__Password=${CLOUDAMQP_PASSWORD}
       - MessageBroker__VirtualHost=${CLOUDAMQP_VIRTUALHOST}
       - MessageBroker__UseSsl=true
+      - MessageBroker__Port=5671
       - Jwt__Key=${JWT_KEY}
       - Jwt__Issuer=UserService
       - Jwt__Audience=UniversityManagement

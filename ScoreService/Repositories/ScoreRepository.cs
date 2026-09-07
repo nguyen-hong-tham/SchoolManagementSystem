@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using ScoreService.Data;
 using ScoreService.Entities;
 
@@ -11,10 +12,12 @@ namespace ScoreService.Repositories;
 public class ScoreRepository : IScoreRepository
 {
     private readonly ScoreDbContext _db;
+    private readonly IConfiguration _configuration;
 
-    public ScoreRepository(ScoreDbContext db)
+    public ScoreRepository(ScoreDbContext db, IConfiguration configuration)
     {
         _db = db;
+        _configuration = configuration;
     }
 
     // Lấy tất cả điểm của 1 học sinh
@@ -114,9 +117,16 @@ public class ScoreRepository : IScoreRepository
     {
         try
         {
+            var baseUrl = _configuration["Services:UserService"]
+                ?? _configuration["Microservices:UserService"]
+                ?? Environment.GetEnvironmentVariable("SERVICES__USERSERVICE")
+                ?? Environment.GetEnvironmentVariable("MICROSERVICES__USERSERVICE")
+                ?? "http://localhost:5156/api";
+            baseUrl = baseUrl.TrimEnd('/');
+
             using var client = new System.Net.Http.HttpClient();
             client.Timeout = TimeSpan.FromSeconds(5);
-            var response = await client.GetAsync($"http://localhost:5156/api/users/internal/{userId}");
+            var response = await client.GetAsync($"{baseUrl}/users/internal/{userId}");
             if (response.IsSuccessStatusCode)
             {
                 var data = await System.Net.Http.Json.HttpContentJsonExtensions.ReadFromJsonAsync<System.Text.Json.JsonElement>(response.Content);

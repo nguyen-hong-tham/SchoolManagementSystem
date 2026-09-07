@@ -645,8 +645,9 @@ public class StudentClassService : IStudentClassService
                 $"[HTTP Sync] Transmitting sync request to UserService: StudentId={studentId}, NewClassId={newClassId}, Status={status}..."
             );
 
+            var baseUrl = UserCacheHelper.GetUserServiceBaseUrl();
             var response = await client.PostAsJsonAsync(
-                "http://localhost:5156/api/users/internal/sync-class",
+                $"{baseUrl}/users/internal/sync-class",
                 payload
             );
             if (response.IsSuccessStatusCode)

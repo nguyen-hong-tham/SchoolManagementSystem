@@ -4,12 +4,14 @@ using ClassService.Repositories;
 using ClassService.Repositories.Interfaces;
 using ClassService.Services;
 using ClassService.Services.Interfaces;
+using ClassService.Helpers;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
+UserCacheHelper.Configure(builder.Configuration);
 
 builder.Services.AddControllers();
 builder.Services.AddMassTransit(x =>
@@ -25,8 +27,12 @@ builder.Services.AddMassTransit(x =>
     x.UsingRabbitMq(
         (context, cfg) =>
         {
+            ushort port = builder.Configuration.GetValue<ushort?>("MessageBroker:Port")
+                ?? (builder.Configuration.GetValue<bool>("MessageBroker:UseSsl") ? (ushort)5671 : (ushort)5672);
+
             cfg.Host(
                 builder.Configuration["MessageBroker:Host"] ?? "localhost",
+                port,
                 builder.Configuration["MessageBroker:VirtualHost"] ?? "/",
                 h =>
                 {

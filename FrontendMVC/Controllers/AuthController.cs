@@ -23,11 +23,12 @@ public class AuthController : Controller
     [HttpGet]
     public IActionResult Login()
     {
-        // Nếu đã có Token, điều hướng dựa theo Role
+        // Nếu đã có Token và Role hợp lệ, điều hướng dựa theo Role
         var token = Request.Cookies["jwt_token"];
-        if (!string.IsNullOrEmpty(token))
+        var role = Request.Cookies["user_role"];
+
+        if (!string.IsNullOrEmpty(token) && !string.IsNullOrEmpty(role))
         {
-            var role = Request.Cookies["user_role"];
             if (role == "Admin")
                 return RedirectToAction("Dashboard", "Admin");
             if (role == "Teacher")
@@ -35,6 +36,17 @@ public class AuthController : Controller
             if (role == "Student")
                 return RedirectToAction("Dashboard", "Student");
         }
+
+        // Nếu token không tồn tại nhưng cookie role/name vẫn còn sót lại, dọn sạch
+        if (!string.IsNullOrEmpty(role) || !string.IsNullOrEmpty(token))
+        {
+            var clearOptions = new CookieOptions { Path = "/" };
+            Response.Cookies.Delete("jwt_token", clearOptions);
+            Response.Cookies.Delete("user_role", clearOptions);
+            Response.Cookies.Delete("user_id", clearOptions);
+            Response.Cookies.Delete("user_name", clearOptions);
+        }
+
         return View(new LoginViewModel());
     }
 
@@ -76,17 +88,26 @@ public class AuthController : Controller
                         ?? string.Empty;
                     var fullName = loginResult.User?.FullName ?? "N/A";
 
-                    // Lưu vào Cookie (HttpOnly cho Token để bảo mật)
+                    var isHttps = Request.IsHttps || Request.Headers["X-Forwarded-Proto"] == "https";
+
+                    // Lưu vào Cookie (HttpOnly cho Token để bảo mật, Lax để không bị rớt cookie)
                     var cookieOptions = new CookieOptions
                     {
                         HttpOnly = true,
                         Expires = DateTime.UtcNow.AddDays(7),
-                        Secure = false, // Chỉ đặt true khi chạy HTTPS
-                        SameSite = SameSiteMode.Strict,
+                        Secure = isHttps,
+                        SameSite = SameSiteMode.Lax,
+                        Path = "/"
                     };
                     Response.Cookies.Append("jwt_token", loginResult.Token, cookieOptions);
 
-                    var normalOptions = new CookieOptions { Expires = DateTime.UtcNow.AddDays(7) };
+                    var normalOptions = new CookieOptions
+                    {
+                        Expires = DateTime.UtcNow.AddDays(7),
+                        Secure = isHttps,
+                        SameSite = SameSiteMode.Lax,
+                        Path = "/"
+                    };
                     Response.Cookies.Append("user_role", role, normalOptions);
                     Response.Cookies.Append("user_id", nameId, normalOptions);
                     Response.Cookies.Append("user_name", fullName, normalOptions);
@@ -126,10 +147,11 @@ public class AuthController : Controller
     [HttpGet]
     public IActionResult Logout()
     {
-        Response.Cookies.Delete("jwt_token");
-        Response.Cookies.Delete("user_role");
-        Response.Cookies.Delete("user_id");
-        Response.Cookies.Delete("user_name");
+        var clearOptions = new CookieOptions { Path = "/" };
+        Response.Cookies.Delete("jwt_token", clearOptions);
+        Response.Cookies.Delete("user_role", clearOptions);
+        Response.Cookies.Delete("user_id", clearOptions);
+        Response.Cookies.Delete("user_name", clearOptions);
         return RedirectToAction("Login");
     }
 
